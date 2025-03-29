@@ -47,7 +47,7 @@ streamlit run rosca_app.py
 
 Open in Browser
 
-The app will run on http://localhost:8501
+The app will run on https://rosca-comitte-app-69nstugsywn7ryjssxuumb.streamlit.app
 
 If it does not open automatically, paste this URL into your browser.
 
