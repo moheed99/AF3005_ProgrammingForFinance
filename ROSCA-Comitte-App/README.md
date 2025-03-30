@@ -47,22 +47,12 @@ streamlit run rosca_app.py
 
 Open in Browser
 
-The app will run on https://rosca-comitte-app-69nstugsywn7ryjssxuumb.streamlit.app
+The app will run on https://rosca-comitte-app-71.streamlit.app
 
 If it does not open automatically, paste this URL into your browser.
 
 Deployment Link
 
-The app is hosted on Streamlit:Deployment URL
-
-Screenshots
+The app is hosted on Streamlit:Deployment (https://rosca-comitte-app-71.streamlit.app)
 
 
-
-Video Demo
-
-Watch Demo
-
-GitHub Repository
-
-GitHub Repo
