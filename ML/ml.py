@@ -240,7 +240,7 @@ if data_source_option == "Fetch from Alpha Vantage":
     av_api_key = st.sidebar.text_input(
         "Enter Alpha Vantage API Key:",
         type="password", # Mask the input
-        value=st.session_state.get('api_key', 'pQevpxw3Ixgh5miIRKakTSYlkSvNCrPP'), # Persist key within session
+        value=st.session_state.get('api_key', 'GAKmbbBEhW4pzmRHyyTHEl7cwsi74Me5'), # Persist key within session
         help="Get your free key from alphavantage.co"
     )
     stock_symbol_av = st.sidebar.text_input("Enter stock symbol (e.g., IBM, MSFT):", "IBM")
