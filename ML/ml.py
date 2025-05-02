@@ -1897,21 +1897,3 @@ elif st.session_state['stage'] > 7 or st.session_state['stage'] < 0:
     st.warning("Invalid application state detected. Resetting.")
     reset_app()
     st.experimental_rerun()
-```
-
-**Explanation of Key ML Fixes:**
-
-1.  **Scaling after Split (Linear/Logistic Regression):**
-    *   In Stage 2 (Preprocessing), the feature scaling section was removed.
-    *   In Stage 5 (Model Training), *before* training Linear or Logistic Regression, a `StandardScaler` or `MinMaxScaler` is instantiated.
-    *   `scaler.fit_transform(X_train)` is used on the training data only. This learns the scaling parameters (mean/std or min/max) solely from the training set.
-    *   The *fitted* `scaler` object is saved in `st.session_state['scaler']`.
-    *   The model is trained using the scaled training data (`X_train_final`).
-    *   In Stage 6 (Evaluation), the saved `scaler` is retrieved.
-    *   `scaler.transform(X_test)` is used on the test data. This applies the *same* transformation learned from the training data, preventing any information from the test set influencing the scaling.
-    *   Predictions are made using the scaled test data (`X_test_final`).
-2.  **K-Means Scaling:** The scaling for K-Means remains within its training block (Stage 5). This is correct because K-Means is unsupervised and typically uses the entire dataset (or the portion designated for clustering). Scaling *before* applying K-Means is crucial as it's distance-based.
-3.  **NaN Handling:** Checks for NaNs are performed more explicitly before splitting and before training/prediction to catch potential issues arising from feature engineering or processing steps. Rows with NaNs in selected features/target are dropped before the split.
-4.  **Data Leakage Warning:** A specific warning is added in Stage 3 (Feature Engineering) about the potential for data leakage when creating time-dependent features (like rolling averages or technical indicators) *before* the train/test split. While the code allows it for UI simplicity, the user is cautioned about interpreting results derived this way.
-
-Remember to enter your Alpha Vantage API key in the sidebar when running the app.
