@@ -373,16 +373,21 @@ elif st.session_state.stage == 1:
                 df_display.info(buf=buffer)
                 st.text(buffer.getvalue())
 
+            # Summary Statistics - FIX APPLIED HERE
             st.subheader("Summary Statistics")
             try:
-                # Attempt to include non-numeric if practical
-                if df_display.shape[1] < 50:
-                    st.dataframe(df_display.describe(include='all', datetime_is_numeric=True))
-                else:
-                    st.dataframe(df_display.describe(datetime_is_numeric=True))
+                # Remove datetime_is_numeric=True
+                # include='all' works in newer pandas to include datetime, older pandas ignore it gracefully
+                st.dataframe(df_display.describe(include='all'))
             except Exception as e:
-                st.error(f"Could not generate summary statistics: {e}")
-                st.dataframe(df_display.describe(datetime_is_numeric=True)) # Fallback
+                st.error(f"Could not generate detailed summary statistics: {e}")
+                st.write("Attempting numeric summary only:")
+                try:
+                    # Remove datetime_is_numeric=True from fallback as well
+                    st.dataframe(df_display.describe())
+                except Exception as e2:
+                     st.error(f"Could not generate numeric summary statistics either: {e2}")
+
 
             # Data Visualization
             st.subheader("Initial Data Visualization")
@@ -450,7 +455,7 @@ elif st.session_state.stage == 2:
             st.markdown("---")
             st.subheader("Missing Values Analysis")
             missing_values = data_to_process.isnull().sum()
-            missing_percent = (missing_values / len(data_to_process)) * 100
+            missing_percent = (missing_values / len(data_to_process)) * 100 if len(data_to_process) > 0 else 0
             missing_df = pd.DataFrame({'Missing Count': missing_values, 'Percentage': missing_percent})
             missing_df = missing_df[missing_df['Missing Count'] > 0].sort_values('Percentage', ascending=False)
 
@@ -588,7 +593,8 @@ elif st.session_state.stage == 2:
                                 new_col_name = f"{col}_log"
                                 if (processed_data_ot[col] <= 0).any():
                                     min_val = processed_data_ot[col].min()
-                                    shift = 1 - min_val if min_val <= 0 else 0 # Add 1 if min is 0 or less
+                                    # Ensure shift is large enough if min_val is very small negative
+                                    shift = max(1, 1 - min_val) if min_val <= 0 else 0
                                     processed_data_ot[new_col_name] = np.log(processed_data_ot[col] + shift)
                                     st.info(f"Applied log transform to {col} (added {shift:.2f} before log). New column: {new_col_name}")
                                 else:
@@ -630,12 +636,18 @@ elif st.session_state.stage == 2:
                         try:
                             if scaling_method == "StandardScaler (Z-score)":
                                 scaler = StandardScaler()
-                                processed_data_sc[current_numeric_cols] = scaler.fit_transform(processed_data_sc[current_numeric_cols])
+                                # Ensure data is purely numeric before scaling
+                                numeric_data_to_scale = processed_data_sc[current_numeric_cols].copy()
+                                # Handle potential NaNs before scaling (important!)
+                                numeric_data_to_scale.fillna(numeric_data_to_scale.mean(), inplace=True) # Or use another imputation strategy if needed
+                                processed_data_sc[current_numeric_cols] = scaler.fit_transform(numeric_data_to_scale)
                                 scaler_obj = scaler
                                 st.info("Applied StandardScaler to all numeric features.")
                             elif scaling_method == "MinMaxScaler (0-1)":
                                 scaler = MinMaxScaler()
-                                processed_data_sc[current_numeric_cols] = scaler.fit_transform(processed_data_sc[current_numeric_cols])
+                                numeric_data_to_scale = processed_data_sc[current_numeric_cols].copy()
+                                numeric_data_to_scale.fillna(numeric_data_to_scale.mean(), inplace=True)
+                                processed_data_sc[current_numeric_cols] = scaler.fit_transform(numeric_data_to_scale)
                                 scaler_obj = scaler
                                 st.info("Applied MinMaxScaler to all numeric features.")
                             elif scaling_method == "No scaling":
@@ -720,6 +732,8 @@ elif st.session_state.stage == 3:
                 # Update session state if changed
                 if selected_target != current_target:
                     st.session_state.target = selected_target
+                    # Reset features if target changes
+                    st.session_state.features = None
                     st.rerun() # Rerun to update subsequent logic based on new target
 
                 # --- Binarization Option (for Logistic Regression) ---
@@ -732,36 +746,58 @@ elif st.session_state.stage == 3:
                         with st.expander(f"Optional: Binarize Target '{target_col}'"):
                             st.warning(f"Target '{target_col}' ({target_dtype}, {target_nunique} unique values) is not binary. Binarization is recommended for Logistic Regression.")
                             if pd.api.types.is_numeric_dtype(target_dtype):
-                                threshold = st.slider("Select threshold:", float(data[target_col].min()), float(data[target_col].max()), float(data[target_col].median()), key="binarize_thresh")
-                                if st.button("Apply Binarization"):
-                                    try:
-                                        new_target_name = f"{target_col}_binary"
-                                        # Use the current 'data' DataFrame
-                                        data[new_target_name] = (data[target_col] > threshold).astype(int)
-                                        st.session_state.processed_data = data # Save changes
-                                        st.session_state.target = new_target_name # Update target in session state
-                                        st.success(f"Created binary target '{st.session_state.target}' based on threshold {threshold:.2f}.")
-                                        st.rerun()
-                                    except Exception as e:
-                                         st.error(f"Error during binarization: {e}")
+                                # Ensure slider values are valid numbers
+                                min_val = float(data[target_col].min()) if pd.notna(data[target_col].min()) else 0.0
+                                max_val = float(data[target_col].max()) if pd.notna(data[target_col].max()) else 1.0
+                                med_val = float(data[target_col].median()) if pd.notna(data[target_col].median()) else (min_val + max_val) / 2
+                                if min_val == max_val: # Handle constant column case
+                                    st.info("Target column has only one value. Cannot binarize.")
+                                else:
+                                    threshold = st.slider("Select threshold:", min_value=min_val, max_value=max_val, value=med_val, key="binarize_thresh")
+                                    if st.button("Apply Binarization"):
+                                        try:
+                                            new_target_name = f"{target_col}_binary"
+                                            # Use the current 'data' DataFrame copy
+                                            data_bin = data.copy()
+                                            data_bin[new_target_name] = (data_bin[target_col] > threshold).astype(int)
+                                            st.session_state.processed_data = data_bin # Save changes
+                                            st.session_state.target = new_target_name # Update target in session state
+                                            st.success(f"Created binary target '{st.session_state.target}' based on threshold {threshold:.2f}.")
+                                            st.rerun()
+                                        except Exception as e:
+                                             st.error(f"Error during binarization: {e}")
                             else:
                                 # Simple binarization for categorical: one vs rest (choose most frequent as 1?)
                                 st.info("Binarization for multi-class categorical target not yet implemented. Model will attempt multi-class classification.")
 
             elif st.session_state.model_type == "K-Means Clustering":
                 st.info("ℹ️ K-Means is unsupervised and does not require a target variable.")
-                st.session_state.target = None # Ensure target is None
+                if st.session_state.target is not None:
+                     st.session_state.target = None # Ensure target is None
+                     st.rerun()
+
 
             st.markdown("---")
             # --- Feature Selection ---
             st.subheader("Feature Selection")
-            target_col = st.session_state.get('target') # Get current target
-            available_features = data.select_dtypes(include=np.number).columns.tolist()
+            target_col = st.session_state.get('target') # Get current target again
+            # Get numeric columns from the *potentially modified* data (e.g., after binarization)
+            current_data_for_features = st.session_state.processed_data.copy()
+            available_features = current_data_for_features.select_dtypes(include=np.number).columns.tolist()
+
             if target_col and target_col in available_features:
                 try:
-                    available_features.remove(target_col) # Don't use target as a feature
+                    available_features.remove(target_col) # Don't use current target as a feature
                 except ValueError:
-                    pass # Target might have been transformed (e.g., _binary)
+                    pass # Target might have been transformed
+
+            # Also remove original target if binary target exists
+            if target_col and target_col.endswith("_binary"):
+                 original_target = target_col.replace("_binary", "")
+                 if original_target in available_features:
+                      try: available_features.remove(original_target)
+                      except ValueError: pass
+
 
             if not available_features:
                 st.error("No numeric features available for selection (after excluding target). Cannot proceed.")
@@ -769,10 +805,9 @@ elif st.session_state.stage == 3:
             else:
                 st.markdown("**Select features to use for the model:**")
                 # Use multiselect for easier selection
-                # Ensure default features are valid and exist in the current available features
                 current_selection = st.session_state.get('features', [])
                 valid_default = [f for f in current_selection if f in available_features]
-                if not valid_default: # If previous selection is invalid or empty, default to all
+                if not valid_default: # Default to all if previous invalid or empty
                      valid_default = available_features
 
                 selected_features = st.multiselect(
@@ -781,43 +816,56 @@ elif st.session_state.stage == 3:
                      default=valid_default,
                      key="feature_multiselect"
                 )
+                # Update session state immediately if selection changes
+                if selected_features != st.session_state.get('features'):
+                    st.session_state.features = selected_features
+                    # No rerun needed here, button confirms
+
 
             if st.button("🔍 Confirm Selected Features & Preview Importance"):
                 if not selected_features:
                     st.error("Please select at least one feature.")
                 else:
+                    # Store confirmed features
                     st.session_state.features = selected_features
                     st.success(f"Confirmed {len(selected_features)} features.")
 
                     # Calculate feature importance preview if applicable
-                    if target_col and st.session_state.model_type != "K-Means Clustering":
+                    target_col_preview = st.session_state.get('target')
+                    if target_col_preview and st.session_state.model_type != "K-Means Clustering":
                         try:
-                            X_preview = data[selected_features].copy()
-                            y_preview = data[target_col].copy()
-                            # Handle potential NaNs before fitting selector
+                            # Use the latest processed data again
+                            preview_data = st.session_state.processed_data.copy()
+                            X_preview = preview_data[selected_features].copy()
+                            y_preview = preview_data[target_col_preview].copy()
+
+                            # Handle NaNs before fitting selector
                             combined_preview = pd.concat([X_preview, y_preview], axis=1).dropna()
-                            X_preview_clean = combined_preview[selected_features]
-                            y_preview_clean = combined_preview[target_col]
-
-                            if len(X_preview_clean) > 1 and len(y_preview_clean.unique()) > 1: # Need samples and variation
-                                with st.spinner("Calculating feature importance preview..."):
-                                     score_func = f_regression if st.session_state.model_type == "Linear Regression" else f_classif
-                                     score_func_name = "F-Regression" if st.session_state.model_type == "Linear Regression" else "F-Classification (ANOVA)"
-                                     selector = SelectKBest(score_func, k='all')
-                                     selector.fit(X_preview_clean, y_preview_clean)
-                                     scores = selector.scores_
-
-                                     importance_df = pd.DataFrame({'Feature': selected_features, 'Importance': scores}).sort_values('Importance', ascending=False)
-                                     st.session_state.feature_importance = importance_df # Store importance
-                                     fig_imp = px.bar(importance_df, x='Importance', y='Feature', orientation='h', title=f'Feature Importance Preview ({score_func_name})', color='Importance', color_continuous_scale='Viridis')
-                                     st.plotly_chart(fig_imp, use_container_width=True)
+                            if len(combined_preview) < 2:
+                                st.warning("Not enough non-NaN data to calculate feature importance preview.")
                             else:
-                                 st.warning("Not enough valid data or target variation to calculate feature importance preview.")
+                                X_preview_clean = combined_preview[selected_features]
+                                y_preview_clean = combined_preview[target_col_preview]
+
+                                # Check for sufficient target variation
+                                if y_preview_clean.nunique() < 2:
+                                     st.warning("Target variable has only one unique value after cleaning. Cannot calculate importance.")
+                                else:
+                                    with st.spinner("Calculating feature importance preview..."):
+                                         score_func = f_regression if st.session_state.model_type == "Linear Regression" else f_classif
+                                         score_func_name = "F-Regression" if st.session_state.model_type == "Linear Regression" else "F-Classification (ANOVA)"
+                                         selector = SelectKBest(score_func, k='all')
+                                         selector.fit(X_preview_clean, y_preview_clean)
+                                         scores = selector.scores_
+
+                                         importance_df = pd.DataFrame({'Feature': selected_features, 'Importance': scores}).sort_values('Importance', ascending=False)
+                                         st.session_state.feature_importance = importance_df # Store importance
+                                         fig_imp = px.bar(importance_df, x='Importance', y='Feature', orientation='h', title=f'Feature Importance Preview ({score_func_name})', color='Importance', color_continuous_scale='Viridis')
+                                         st.plotly_chart(fig_imp, use_container_width=True)
                         except Exception as e:
                             st.warning(f"Could not calculate feature importance preview: {e}")
                             traceback.print_exc()
-                    # Do not rerun here, let user proceed manually after seeing importance
-                    # st.rerun()
+
 
             # --- Feature Creation Options ---
             st.markdown("---")
@@ -839,20 +887,30 @@ elif st.session_state.stage == 3:
                     if st.button("Create Selected Date Features"):
                         with st.spinner("Creating date features..."):
                             new_data_fc = data.copy() # Work on a copy
-                            base_col = new_data_fc[selected_date_col_create]
-                            created_count = 0
-                            if create_year: new_data_fc[f'{selected_date_col_create}_year'] = base_col.dt.year; created_count+=1
-                            if create_month: new_data_fc[f'{selected_date_col_create}_month'] = base_col.dt.month; created_count+=1
-                            if create_day: new_data_fc[f'{selected_date_col_create}_day'] = base_col.dt.day; created_count+=1
-                            if create_dayofweek: new_data_fc[f'{selected_date_col_create}_dayofweek'] = base_col.dt.dayofweek; created_count+=1
-                            if create_quarter: new_data_fc[f'{selected_date_col_create}_quarter'] = base_col.dt.quarter; created_count+=1
-
-                            if created_count > 0:
-                                st.session_state.processed_data = new_data_fc # Update data
-                                st.success(f"{created_count} date features created.")
-                                st.rerun()
+                            if selected_date_col_create not in new_data_fc.columns:
+                                 st.error(f"Date column '{selected_date_col_create}' not found in current data.")
                             else:
-                                st.info("No date features selected to create.")
+                                try:
+                                    base_col = new_data_fc[selected_date_col_create]
+                                    # Ensure it's datetime before accessing dt accessor
+                                    if not pd.api.types.is_datetime64_any_dtype(base_col):
+                                         base_col = pd.to_datetime(base_col, errors='coerce')
+
+                                    created_count = 0
+                                    if create_year: new_data_fc[f'{selected_date_col_create}_year'] = base_col.dt.year; created_count+=1
+                                    if create_month: new_data_fc[f'{selected_date_col_create}_month'] = base_col.dt.month; created_count+=1
+                                    if create_day: new_data_fc[f'{selected_date_col_create}_day'] = base_col.dt.day; created_count+=1
+                                    if create_dayofweek: new_data_fc[f'{selected_date_col_create}_dayofweek'] = base_col.dt.dayofweek; created_count+=1
+                                    if create_quarter: new_data_fc[f'{selected_date_col_create}_quarter'] = base_col.dt.quarter; created_count+=1
+
+                                    if created_count > 0:
+                                        st.session_state.processed_data = new_data_fc # Update data
+                                        st.success(f"{created_count} date features created.")
+                                        st.rerun()
+                                    else:
+                                        st.info("No date features selected to create.")
+                                except Exception as e:
+                                     st.error(f"Error creating date features: {e}")
 
             # Technical Indicators (if OHLCV data exists)
             req_cols = ['Open', 'High', 'Low', 'Close'] # Volume is common but not strictly needed for all
@@ -873,72 +931,85 @@ elif st.session_state.stage == 3:
                         with st.spinner("Creating indicators..."):
                             new_data_ti = data.copy() # Work on a copy
                             created_count = 0
-                            if create_ma:
-                                for period in [5, 20]: new_data_ti[f'MA_{period}'] = new_data_ti['Close'].rolling(window=period).mean(); created_count+=1
-                            if create_rsi:
-                                delta = new_data_ti['Close'].diff()
-                                gain = delta.where(delta > 0, 0).fillna(0)
-                                loss = -delta.where(delta < 0, 0).fillna(0)
-                                avg_gain = gain.rolling(window=14).mean()
-                                avg_loss = loss.rolling(window=14).mean()
-                                rs = avg_gain / avg_loss
-                                new_data_ti['RSI_14'] = 100 - (100 / (1 + rs)); created_count+=1
-                            if create_bb:
-                                ma20 = new_data_ti['Close'].rolling(window=20).mean()
-                                sd20 = new_data_ti['Close'].rolling(window=20).std()
-                                new_data_ti['BB_Upper'] = ma20 + (sd20 * 2)
-                                new_data_ti['BB_Lower'] = ma20 - (sd20 * 2); created_count+=2
-                            if create_macd:
-                                ema12 = new_data_ti['Close'].ewm(span=12, adjust=False).mean()
-                                ema26 = new_data_ti['Close'].ewm(span=26, adjust=False).mean()
-                                new_data_ti['MACD'] = ema12 - ema26
-                                new_data_ti['MACD_Signal'] = new_data_ti['MACD'].ewm(span=9, adjust=False).mean(); created_count+=2
-                            if create_vol_change and has_volume:
-                                 new_data_ti['Volume_PctChange'] = new_data_ti['Volume'].pct_change() * 100; created_count+=1
+                            try:
+                                if create_ma:
+                                    for period in [5, 20]: new_data_ti[f'MA_{period}'] = new_data_ti['Close'].rolling(window=period).mean(); created_count+=1
+                                if create_rsi:
+                                    delta = new_data_ti['Close'].diff()
+                                    gain = delta.where(delta > 0, 0).fillna(0)
+                                    loss = -delta.where(delta < 0, 0).fillna(0)
+                                    avg_gain = gain.rolling(window=14).mean()
+                                    avg_loss = loss.rolling(window=14).mean()
+                                    rs = avg_gain / avg_loss
+                                    new_data_ti['RSI_14'] = 100 - (100 / (1 + rs)); created_count+=1
+                                if create_bb:
+                                    ma20 = new_data_ti['Close'].rolling(window=20).mean()
+                                    sd20 = new_data_ti['Close'].rolling(window=20).std()
+                                    new_data_ti['BB_Upper'] = ma20 + (sd20 * 2)
+                                    new_data_ti['BB_Lower'] = ma20 - (sd20 * 2); created_count+=2
+                                if create_macd:
+                                    ema12 = new_data_ti['Close'].ewm(span=12, adjust=False).mean()
+                                    ema26 = new_data_ti['Close'].ewm(span=26, adjust=False).mean()
+                                    new_data_ti['MACD'] = ema12 - ema26
+                                    new_data_ti['MACD_Signal'] = new_data_ti['MACD'].ewm(span=9, adjust=False).mean(); created_count+=2
+                                if create_vol_change and has_volume:
+                                     new_data_ti['Volume_PctChange'] = new_data_ti['Volume'].pct_change() * 100; created_count+=1
 
-                            if created_count > 0:
-                                # Drop NaNs introduced by rolling calculations
-                                rows_before = len(new_data_ti)
-                                new_data_ti.dropna(inplace=True)
-                                rows_after = len(new_data_ti)
-                                st.session_state.processed_data = new_data_ti # Update data
-                                st.success(f"{created_count} technical indicator(s) created.")
-                                if rows_before > rows_after:
-                                    st.info(f"Dropped {rows_before - rows_after} rows due to NaNs from indicator calculations.")
-                                st.rerun()
-                            else:
-                                st.info("No indicators selected to create.")
+                                if created_count > 0:
+                                    # Drop NaNs introduced by rolling calculations
+                                    rows_before = len(new_data_ti)
+                                    new_data_ti.dropna(inplace=True)
+                                    rows_after = len(new_data_ti)
+                                    st.session_state.processed_data = new_data_ti # Update data
+                                    st.success(f"{created_count} technical indicator(s) created.")
+                                    if rows_before > rows_after:
+                                        st.info(f"Dropped {rows_before - rows_after} rows due to NaNs from indicator calculations.")
+                                    st.rerun()
+                                else:
+                                    st.info("No indicators selected to create.")
+                            except Exception as e:
+                                 st.error(f"Error creating indicators: {e}")
+
 
             # Interaction Features
-            current_numeric_cols_int = data.select_dtypes(include=np.number).columns.tolist()
-            if target_col and target_col in current_numeric_cols_int:
-                 try: current_numeric_cols_int.remove(target_col)
-                 except ValueError: pass # Ignore if target not in list
+            # Refresh numeric cols list in case new ones were created
+            current_numeric_cols_int = st.session_state.processed_data.select_dtypes(include=np.number).columns.tolist()
+            target_col_int = st.session_state.get('target')
+            if target_col_int and target_col_int in current_numeric_cols_int:
+                 try: current_numeric_cols_int.remove(target_col_int)
+                 except ValueError: pass # Ignore if target not in list (e.g., non-numeric)
+            # Also remove original target if binary target exists
+            if target_col_int and target_col_int.endswith("_binary"):
+                 original_target_int = target_col_int.replace("_binary", "")
+                 if original_target_int in current_numeric_cols_int:
+                      try: current_numeric_cols_int.remove(original_target_int)
+                      except ValueError: pass
+
 
             if len(current_numeric_cols_int) >= 2:
                  with st.expander("🔗 Create Interaction Features"):
                     col1_int, col2_int = st.columns(2)
                     with col1_int: feat1 = st.selectbox("Select first feature:", current_numeric_cols_int, key="interact_1")
-                    # Ensure feat2 list doesn't include feat1
                     feat2_options = [c for c in current_numeric_cols_int if c != feat1]
                     if not feat2_options:
                         st.warning("Need at least two distinct numeric features for interaction.")
                     else:
                         with col2_int: feat2 = st.selectbox("Select second feature:", feat2_options, key="interact_2")
-
                         interaction_type = st.selectbox("Select interaction type:", ["Multiplication (*)", "Division (/)", "Addition (+)", "Subtraction (-)"])
 
                         if st.button("Create Interaction Feature"):
                             with st.spinner("Creating interaction..."):
-                                new_data_int = data.copy()
+                                new_data_int = st.session_state.processed_data.copy() # Use latest data
                                 new_feat_name = ""
                                 try:
-                                    if interaction_type == "Multiplication (*)": new_feat_name = f'{feat1}_x_{feat2}'; new_data_int[new_feat_name] = new_data_int[feat1] * new_data_int[feat2]
-                                    elif interaction_type == "Addition (+)": new_feat_name = f'{feat1}_plus_{feat2}'; new_data_int[new_feat_name] = new_data_int[feat1] + new_data_int[feat2]
-                                    elif interaction_type == "Subtraction (-)": new_feat_name = f'{feat1}_minus_{feat2}'; new_data_int[new_feat_name] = new_data_int[feat1] - new_data_int[feat2]
+                                    op_map = {"Multiplication (*)": "*", "Division (/)": "/", "Addition (+)": "+", "Subtraction (-)": "-"}
+                                    op_str_map = {"Multiplication (*)": "x", "Division (/)": "div", "Addition (+)": "plus", "Subtraction (-)": "minus"}
+                                    new_feat_name = f'{feat1}_{op_str_map[interaction_type]}_{feat2}'
+
+                                    if interaction_type == "Multiplication (*)": new_data_int[new_feat_name] = new_data_int[feat1] * new_data_int[feat2]
+                                    elif interaction_type == "Addition (+)": new_data_int[new_feat_name] = new_data_int[feat1] + new_data_int[feat2]
+                                    elif interaction_type == "Subtraction (-)": new_data_int[new_feat_name] = new_data_int[feat1] - new_data_int[feat2]
                                     elif interaction_type == "Division (/)":
-                                        new_feat_name = f'{feat1}_div_{feat2}';
-                                        # Add small epsilon only if denominator can be zero
                                         if (new_data_int[feat2] == 0).any():
                                             new_data_int[new_feat_name] = new_data_int[feat1] / (new_data_int[feat2] + 1e-9)
                                             st.info("Added small epsilon to denominator to avoid division by zero.")
@@ -946,6 +1017,9 @@ elif st.session_state.stage == 3:
                                             new_data_int[new_feat_name] = new_data_int[feat1] / new_data_int[feat2]
 
                                     st.session_state.processed_data = new_data_int
+                                    # Automatically add the new feature to selected features? Optional.
+                                    # if st.session_state.features and new_feat_name not in st.session_state.features:
+                                    #     st.session_state.features.append(new_feat_name)
                                     st.success(f"Created '{new_feat_name}' feature.")
                                     st.rerun()
                                 except Exception as e:
@@ -955,15 +1029,14 @@ elif st.session_state.stage == 3:
             # --- Proceed Button ---
             st.markdown("---")
             if st.session_state.get('features'): # Only enable if features have been confirmed
-                st.success(f"Ready to proceed with {len(st.session_state['features'])} selected features.")
+                st.success(f"Ready to proceed with {len(st.session_state.features)} selected features.")
                 if st.button("➡️ Confirm Features & Proceed to Train/Test Split"):
-                    # Final check for NaNs in selected features/target before proceeding
                     final_data = st.session_state.processed_data
-                    cols_to_check = list(st.session_state.features) # Make a copy
-                    if st.session_state.target:
-                        cols_to_check.append(st.session_state.target)
+                    cols_to_check = list(st.session_state.features)
+                    final_target = st.session_state.get('target')
+                    if final_target and final_target in final_data.columns:
+                        cols_to_check.append(final_target)
 
-                    # Ensure all columns to check actually exist in the dataframe
                     cols_to_check = [col for col in cols_to_check if col in final_data.columns]
 
                     if not cols_to_check:
@@ -972,16 +1045,14 @@ elif st.session_state.stage == 3:
                         nan_counts = final_data[cols_to_check].isnull().sum()
                         if nan_counts.sum() > 0:
                             st.warning(f"Warning: {nan_counts.sum()} NaN values found in selected columns. These rows will be dropped before splitting/training.")
-                            st.write("NaN counts per column:")
                             st.dataframe(nan_counts[nan_counts > 0])
-                            # Consider adding an explicit dropna confirmation here if needed
 
                         st.session_state.stage = 4
                         st.session_state.split_done = False # Reset flag for next stage
                         st.success("Feature selection/engineering confirmed! Moving to Train/Test Split.")
                         st.rerun()
             else:
-                st.warning("Please confirm selected features using the 'Confirm Selected Features' button before proceeding.")
+                st.warning("Please select and confirm features using the 'Confirm Selected Features' button before proceeding.")
 
         else:
             st.warning("No processed data available. Please complete Stage 2 first.")
@@ -1038,17 +1109,15 @@ elif st.session_state.stage == 4:
                         random_state = st.number_input("Random state (for reproducibility):", min_value=0, value=42, step=1, key="split_random_state")
                         stratify_option = None
                         if st.session_state.model_type == "Logistic Regression" and y.nunique() > 1:
-                            # Check if stratification is feasible (at least 2 samples per class in smallest set)
-                            min_samples_needed = 2 # Need at least 1 for train, 1 for test per class
+                            min_samples_needed = 2
                             class_counts = y.value_counts()
                             smallest_class_count = class_counts.min()
-                            # Estimate test set size for smallest class
                             approx_test_smallest_count = int(np.ceil(smallest_class_count * test_size))
                             if smallest_class_count >= min_samples_needed and approx_test_smallest_count >=1 :
                                 stratify_option = y
                                 st.info("Stratifying split by target variable to maintain class proportions.")
                             else:
-                                st.warning(f"Cannot stratify: Smallest class has {smallest_class_count} samples. Need at least {min_samples_needed} total and approx 1 in test set. Performing non-stratified split.")
+                                st.warning(f"Cannot stratify: Smallest class has {smallest_class_count} samples. Need at least {min_samples_needed} total and >=1 in test set ({test_size*100:.0f}%). Performing non-stratified split.")
 
 
                         if st.button("Split Data"):
@@ -1058,14 +1127,13 @@ elif st.session_state.stage == 4:
                                         X, y,
                                         test_size=test_size,
                                         random_state=int(random_state),
-                                        stratify=stratify_option # Use determined stratify option
+                                        stratify=stratify_option
                                     )
 
                                     st.session_state.X_train = X_train
                                     st.session_state.X_test = X_test
                                     st.session_state.y_train = y_train
                                     st.session_state.y_test = y_test
-                                    # Reset scaled data from previous runs if any
                                     st.session_state.X_train_scaled = None
                                     st.session_state.X_test_scaled = None
 
@@ -1074,24 +1142,20 @@ elif st.session_state.stage == 4:
                                     col_split1.metric("Training Samples", X_train.shape[0])
                                     col_split2.metric("Testing Samples", X_test.shape[0])
 
-
-                                    # Visualize split
                                     split_df = pd.DataFrame({'Set': ['Train', 'Test'], 'Samples': [len(X_train), len(X_test)]})
                                     fig_pie = px.pie(split_df, values='Samples', names='Set', title='Train/Test Split Ratio', hole=0.3, color_discrete_sequence=px.colors.qualitative.Pastel1)
                                     st.plotly_chart(fig_pie, use_container_width=True)
 
-                                    # Show preview of split data
                                     with st.expander("Preview Split Data"):
                                          st.write("Train Features (Head):"); st.dataframe(X_train.head(3))
                                          st.write("Test Features (Head):"); st.dataframe(X_test.head(3))
                                          st.write("Train Target (Head):"); st.dataframe(y_train.head(3))
                                          st.write("Test Target (Head):"); st.dataframe(y_test.head(3))
 
-
-                                    st.session_state.split_done = True # Mark as ready to proceed
+                                    st.session_state.split_done = True
 
                                 except ValueError as ve:
-                                     st.error(f"Error during split: {ve}. This might happen if a class has too few samples for stratification or other data issues.")
+                                     st.error(f"Error during split: {ve}. Check class distributions and test size.")
                                      traceback.print_exc()
                                 except Exception as e:
                                     st.error(f"An unexpected error occurred during split: {e}")
@@ -1104,33 +1168,32 @@ elif st.session_state.stage == 4:
 
                 X = data[features].copy()
                 initial_rows = len(X)
-                X.dropna(inplace=True) # Drop rows with any NaNs in selected features
+                X.dropna(inplace=True)
                 rows_after_na = len(X)
 
                 if rows_after_na < initial_rows:
                      st.warning(f"Removed {initial_rows - rows_after_na} rows due to NaN values in selected features.")
 
-                if rows_after_na < 2: # Need at least 2 samples for clustering
+                if rows_after_na < 2:
                      st.error("Not enough data remaining after handling NaNs for clustering.")
                      st.stop()
                 else:
                     st.info("ℹ️ K-Means uses the full dataset (after NaN removal). No train/test split needed. Scaling will be applied before training.")
-                    # Store the prepared data (unscaled version)
-                    st.session_state.X_train = X # Using X_train key for consistency, represents full dataset
-                    st.session_state.X_test = None # No test set for unsupervised
+                    st.session_state.X_train = X
+                    st.session_state.X_test = None
                     st.session_state.y_train = None
                     st.session_state.y_test = None
-                    st.session_state.X_scaled = None # Reset scaled data
+                    st.session_state.X_scaled = None
 
                     st.success(f"Data prepared for clustering: {X.shape[0]} samples, {X.shape[1]} features.")
-                    st.session_state.split_done = True # Mark as ready to proceed
+                    st.session_state.split_done = True
 
             # --- Proceed Button ---
             st.markdown("---")
             if st.session_state.split_done:
                 if st.button("➡️ Proceed to Model Training"):
                     st.session_state.stage = 5
-                    st.session_state.training_done = False # Reset flag for next stage
+                    st.session_state.training_done = False # Reset flag
                     st.success("Data ready! Moving to Model Training.")
                     st.rerun()
             else:
@@ -1161,7 +1224,6 @@ elif st.session_state.stage == 5:
                      st.stop()
                 else:
                     st.markdown("*(Using default scikit-learn parameters)*")
-                    # Optional: Check if scaling was applied and inform user
                     if st.session_state.scaler is not None:
                          st.info("Note: Preprocessing included scaling. Applying trained scaler to training data before fitting.")
 
@@ -1170,26 +1232,22 @@ elif st.session_state.stage == 5:
                             try:
                                 X_train = st.session_state.X_train
                                 y_train = st.session_state.y_train
-
-                                # Apply scaling if it exists from preprocessing step
                                 scaler = st.session_state.get('scaler')
                                 if scaler:
                                     X_train_final = scaler.transform(X_train)
-                                    st.session_state.X_train_scaled = X_train_final # Store scaled version
+                                    st.session_state.X_train_scaled = X_train_final
                                 else:
-                                    X_train_final = X_train # Use original if no scaler
+                                    X_train_final = X_train
 
                                 model = LinearRegression()
                                 model.fit(X_train_final, y_train)
-
                                 st.session_state.model = model
                                 st.success("Linear Regression model trained successfully!")
 
-                                # Display Coefficients
                                 coef_df = pd.DataFrame({
                                     'Feature': st.session_state.features,
                                     'Coefficient': model.coef_
-                                }).sort_values('Coefficient', key=abs, ascending=False) # Sort by absolute value
+                                }).sort_values('Coefficient', key=abs, ascending=False)
                                 st.write("**Model Coefficients:**")
                                 try:
                                     fig_coef = px.bar(coef_df, x='Coefficient', y='Feature', orientation='h', title='Feature Coefficients (Sorted by Magnitude)', color='Coefficient', color_continuous_scale='RdBu')
@@ -1198,7 +1256,6 @@ elif st.session_state.stage == 5:
                                      st.warning(f"Could not plot coefficients: {e}")
                                      st.dataframe(coef_df)
                                 st.metric("Intercept", f"{model.intercept_:.4f}")
-
                                 st.session_state.training_done = True
 
                             except Exception as e:
@@ -1218,68 +1275,60 @@ elif st.session_state.stage == 5:
                      with col_p2: C = st.number_input("Regularization (C):", min_value=0.01, max_value=100.0, value=1.0, step=0.1, format="%.2f")
                      with col_p3: max_iter = st.number_input("Max Iterations:", min_value=100, max_value=5000, value=1000, step=100)
 
-                     # Inform about scaling
                      if st.session_state.scaler is not None:
                          st.info("Note: Preprocessing included scaling. Applying trained scaler to training data before fitting.")
                      else:
-                          st.warning("Note: Data was not scaled during preprocessing. Logistic Regression often performs better with scaled features.")
-
+                          st.warning("Note: Data was not scaled during preprocessing. Applying StandardScaler before training.")
 
                      if st.button("Train Logistic Regression Model"):
                          with st.spinner("Training Logistic Regression..."):
                              try:
                                  X_train = st.session_state.X_train
                                  y_train = st.session_state.y_train
-
-                                 # Apply scaling if it exists from preprocessing step
                                  scaler = st.session_state.get('scaler')
                                  if scaler:
                                      X_train_final = scaler.transform(X_train)
-                                     st.session_state.X_train_scaled = X_train_final # Store scaled version
+                                     st.session_state.X_train_scaled = X_train_final
                                  else:
-                                     # Scale here if not done before (fit ONLY on train)
-                                     st.info("Applying StandardScaler before training as no scaler was found from preprocessing.")
                                      scaler = StandardScaler()
                                      X_train_final = scaler.fit_transform(X_train)
-                                     st.session_state.scaler = scaler # Store the newly fitted scaler
+                                     st.session_state.scaler = scaler
                                      st.session_state.X_train_scaled = X_train_final
 
-                                 # Check target data type (sklearn expects numerical usually)
                                  if not pd.api.types.is_numeric_dtype(y_train):
-                                     try:
-                                         y_train = pd.to_numeric(y_train)
-                                     except:
-                                         st.error("Could not convert target variable to numeric type for Logistic Regression. Please check data.")
+                                     st.info(f"Attempting to convert target '{st.session_state.target}' to numeric...")
+                                     y_train = pd.to_numeric(y_train, errors='coerce')
+                                     if y_train.isnull().any():
+                                         st.error("Target contains non-numeric values that could not be converted. Please check the target column.")
                                          st.stop()
 
 
                                  model = LogisticRegression(solver=solver, max_iter=max_iter, C=C, random_state=42)
                                  model.fit(X_train_final, y_train)
-
                                  st.session_state.model = model
                                  st.success("Logistic Regression model trained successfully!")
 
-                                 # Display Coefficients (handle multi-class if necessary)
                                  if len(model.classes_) > 2:
                                       st.info(f"Multi-class classification ({len(model.classes_)} classes) detected.")
-                                      # Provide option to view coefficients per class
                                       class_options = [f"Class {c}" for c in model.classes_]
                                       selected_class_view = st.selectbox("View coefficients for class:", class_options)
                                       class_index = class_options.index(selected_class_view)
                                       coefs = model.coef_[class_index]
                                       intercept_val = model.intercept_[class_index]
-                                 else: # Binary or only one class detected (latter shouldn't happen with split)
+                                      title_suffix = f" (Class {model.classes_[class_index]} vs Rest)"
+                                 else:
+                                      class_index = 1 # Index of the positive class
                                       coefs = model.coef_[0]
                                       intercept_val = model.intercept_[0]
-
+                                      title_suffix = f" (Class {model.classes_[class_index]} vs {model.classes_[0]})"
 
                                  coef_df = pd.DataFrame({
                                      'Feature': st.session_state.features,
                                      'Coefficient': coefs
-                                 }).sort_values('Coefficient', key=abs, ascending=False) # Sort by absolute value
+                                 }).sort_values('Coefficient', key=abs, ascending=False)
                                  st.write("**Model Coefficients:**")
                                  try:
-                                     fig_coef = px.bar(coef_df, x='Coefficient', y='Feature', orientation='h', title=f'Feature Coefficients (Sorted by Magnitude) for {selected_class_view if len(model.classes_) > 2 else "Class " + str(model.classes_[1])}', color='Coefficient', color_continuous_scale='RdBu')
+                                     fig_coef = px.bar(coef_df, x='Coefficient', y='Feature', orientation='h', title=f'Feature Coefficients{title_suffix}', color='Coefficient', color_continuous_scale='RdBu')
                                      st.plotly_chart(fig_coef, use_container_width=True)
                                  except Exception as e:
                                      st.warning(f"Could not plot coefficients: {e}")
@@ -1302,44 +1351,32 @@ elif st.session_state.stage == 5:
                  with col_k3: n_init = st.number_input("Num Initializations (n_init):", min_value=1, max_value=50, value=10, step=1, key="kmeans_ninit")
                  max_iter_kmeans = st.number_input("Maximum iterations:", min_value=100, max_value=1000, value=300, step=50, key="kmeans_maxiter")
 
-                 # Store chosen k for potential later use (e.g., elbow plot suggestion)
-                 st.session_state.kmeans_k = n_clusters
+                 st.session_state.kmeans_k = n_clusters # Store chosen k
 
                  st.info("ℹ️ Data will be scaled using StandardScaler before applying K-Means.")
 
                  if st.button("Train K-Means Clustering Model"):
                      with st.spinner("Running K-Means Clustering..."):
                          try:
-                             X = st.session_state.X_train # This is the full dataset prepared earlier
-
-                             # Scale data using a new scaler or the one from preprocessing
-                             scaler_kmeans = st.session_state.get('scaler') # Check if scaler exists from preprocessing
+                             X = st.session_state.X_train # Full dataset
+                             scaler_kmeans = st.session_state.get('scaler')
                              if scaler_kmeans is None:
                                  st.info("Applying new StandardScaler specifically for K-Means.")
                                  scaler_kmeans = StandardScaler()
                                  X_scaled = scaler_kmeans.fit_transform(X)
-                                 st.session_state.scaler = scaler_kmeans # Store this scaler
+                                 st.session_state.scaler = scaler_kmeans
                              else:
                                  st.info("Using existing scaler from preprocessing stage.")
                                  X_scaled = scaler_kmeans.transform(X)
 
+                             st.session_state.X_scaled = X_scaled # Save scaled data
 
-                             st.session_state.X_scaled = X_scaled # Save scaled data used for clustering
-
-                             model = KMeans(
-                                 n_clusters=n_clusters,
-                                 init=init_method,
-                                 n_init=n_init,
-                                 max_iter=max_iter_kmeans,
-                                 random_state=42
-                             )
+                             model = KMeans(n_clusters=n_clusters, init=init_method, n_init=n_init, max_iter=max_iter_kmeans, random_state=42)
                              model.fit(X_scaled)
-
                              st.session_state.model = model
-                             st.session_state.clusters = model.labels_ # Store cluster labels
+                             st.session_state.clusters = model.labels_
                              st.success(f"K-Means clustering completed with {n_clusters} clusters!")
 
-                             # Display Cluster Centers (original scale if possible)
                              st.subheader("Cluster Centers")
                              centers_scaled = model.cluster_centers_
                              try:
@@ -1355,8 +1392,6 @@ elif st.session_state.stage == 5:
                                  st.write("Cluster Centers (Scaled):")
                                  st.dataframe(centers_df_scaled.style.format("{:.2f}").background_gradient(cmap='viridis'))
 
-
-                             # Display Inertia & Silhouette Score
                              col_m1, col_m2 = st.columns(2)
                              inertia = model.inertia_
                              col_m1.metric("Inertia (WSS)", f"{inertia:.2f}")
@@ -1369,14 +1404,11 @@ elif st.session_state.stage == 5:
                                  st.warning(f"Could not calculate silhouette score: {sil_e}")
                                  st.session_state.metrics = {'Inertia': inertia}
 
-
-                             # Display Cluster Sizes
                              cluster_sizes = pd.Series(model.labels_).value_counts().sort_index().reset_index()
                              cluster_sizes.columns = ['Cluster', 'Number of Samples']
                              fig_sizes = px.bar(cluster_sizes, x='Cluster', y='Number of Samples', title='Cluster Sizes', text_auto=True)
                              fig_sizes.update_layout(xaxis_title='Cluster ID')
                              st.plotly_chart(fig_sizes, use_container_width=True)
-
                              st.session_state.training_done = True
 
                          except Exception as e:
@@ -1388,7 +1420,10 @@ elif st.session_state.stage == 5:
             if st.session_state.training_done:
                 if st.button("➡️ Proceed to Evaluation"):
                     st.session_state.stage = 6
-                    st.session_state.evaluation_done = False # Reset flag for next stage
+                    st.session_state.evaluation_done = False # Reset flag
+                    # Clear previous predictions before evaluation stage
+                    st.session_state.predictions = None
+                    st.session_state.probabilities = None
                     st.success("Model training complete! Moving to Evaluation.")
                     st.rerun()
             else:
@@ -1419,24 +1454,23 @@ elif st.session_state.stage == 6:
                      scaler = st.session_state.get('scaler')
 
                      try:
-                         # Scale X_test if a scaler was used during training/preprocessing
                          if scaler:
-                             X_test_final = scaler.transform(X_test)
-                             st.session_state.X_test_scaled = X_test_final # Store for potential reuse
+                             # Check if already scaled, otherwise scale
+                             if st.session_state.X_test_scaled is None:
+                                 st.session_state.X_test_scaled = scaler.transform(X_test)
+                             X_test_final = st.session_state.X_test_scaled
                          else:
                              X_test_final = X_test
 
-                         # Check if predictions already exist for this model instance, otherwise predict
-                         # This avoids re-predicting if user just navigates back and forth
                          if 'predictions' not in st.session_state or st.session_state.predictions is None:
                              with st.spinner("Generating predictions on test set..."):
                                  st.session_state.predictions = model.predict(X_test_final)
                          y_pred = st.session_state.predictions
 
-                         # Calculate Metrics
                          mse = mean_squared_error(y_test, y_pred)
                          r2 = r2_score(y_test, y_pred)
                          rmse = np.sqrt(mse)
+                         # Clear old metrics before adding new ones
                          st.session_state.metrics = {'MSE': mse, 'RMSE': rmse, 'R2': r2}
 
                          st.markdown("#### Performance Metrics")
@@ -1446,7 +1480,6 @@ elif st.session_state.stage == 6:
                          col_m3.metric("Root Mean Squared Error (RMSE)", f"{rmse:.4f}")
                          st.markdown("---")
 
-                         # Actual vs Predicted Plot
                          st.subheader("Actual vs. Predicted Values")
                          fig_pred = go.Figure()
                          fig_pred.add_trace(go.Scatter(x=y_test, y=y_pred, mode='markers', name='Predictions', marker=dict(color='#ff6e40', opacity=0.7)))
@@ -1454,10 +1487,9 @@ elif st.session_state.stage == 6:
                          fig_pred.update_layout(title='Actual vs. Predicted Values on Test Set', xaxis_title='Actual Values', yaxis_title='Predicted Values', legend_title="Legend")
                          st.plotly_chart(fig_pred, use_container_width=True)
 
-                         # Residuals Plot
                          st.subheader("Residuals Analysis")
                          residuals = y_test - y_pred
-                         fig_res = px.scatter(x=y_pred, y=residuals, title='Residuals vs. Predicted Values', labels={'x': 'Predicted Values', 'y': 'Residuals'}, opacity=0.7, trendline="lowess", trendline_color_override="red") # Add lowess trendline
+                         fig_res = px.scatter(x=y_pred, y=residuals, title='Residuals vs. Predicted Values', labels={'x': 'Predicted Values', 'y': 'Residuals'}, opacity=0.7, trendline="lowess", trendline_color_override="red")
                          fig_res.add_hline(y=0, line_dash="dash", line_color="gray")
                          st.plotly_chart(fig_res, use_container_width=True)
                          st.caption("Residuals (errors) should ideally be randomly scattered around zero.")
@@ -1485,15 +1517,14 @@ elif st.session_state.stage == 6:
                      scaler = st.session_state.get('scaler')
 
                      try:
-                         # Scale X_test using the *same* scaler fitted on training data
                          if scaler:
-                             X_test_final = scaler.transform(X_test)
-                             st.session_state.X_test_scaled = X_test_final # Store for potential reuse
+                             if st.session_state.X_test_scaled is None:
+                                 st.session_state.X_test_scaled = scaler.transform(X_test)
+                             X_test_final = st.session_state.X_test_scaled
                          else:
-                             st.error("Scaler not found, but Logistic Regression requires scaled data for reliable evaluation. Please re-run preprocessing with scaling.")
-                             st.stop() # Stop evaluation if scaling is missing
+                             st.error("Scaler not found, but Logistic Regression requires scaled data. Please re-run preprocessing.")
+                             st.stop()
 
-                         # Predict and get probabilities
                          if 'predictions' not in st.session_state or st.session_state.predictions is None:
                              with st.spinner("Generating predictions on test set..."):
                                  st.session_state.predictions = model.predict(X_test_final)
@@ -1508,18 +1539,16 @@ elif st.session_state.stage == 6:
                                  st.session_state.probabilities = None
                          y_prob = st.session_state.probabilities
 
-
-                         # Calculate Metrics
                          accuracy = accuracy_score(y_test, y_pred)
                          conf_matrix = confusion_matrix(y_test, y_pred)
                          class_report = classification_report(y_test, y_pred, output_dict=True, zero_division=0)
+                         # Clear old metrics before adding new ones
                          st.session_state.metrics = {'Accuracy': accuracy, 'Confusion Matrix': conf_matrix, 'Classification Report': class_report}
 
                          st.markdown("#### Performance Metrics")
                          st.metric("Accuracy", f"{accuracy:.4f}")
                          st.markdown("---")
 
-                         # Confusion Matrix Plot
                          st.subheader("Confusion Matrix")
                          try:
                              labels = model.classes_
@@ -1532,23 +1561,20 @@ elif st.session_state.stage == 6:
                               st.write("Confusion Matrix Data:")
                               st.dataframe(pd.DataFrame(conf_matrix, index=labels, columns=labels))
 
-
-                         # Classification Report
                          st.subheader("Classification Report")
                          try:
                              report_df = pd.DataFrame(class_report).transpose()
                              st.dataframe(report_df.style.format("{:.3f}").highlight_max(axis=0, subset=pd.IndexSlice[['precision', 'recall', 'f1-score'],:], color='lightgreen'))
                          except Exception as e:
                              st.error(f"Could not display classification report: {e}")
-                             st.text(classification_report(y_test, y_pred, zero_division=0)) # Fallback to text
+                             st.text(classification_report(y_test, y_pred, zero_division=0))
                          st.markdown("---")
 
-                         # ROC Curve (if binary and probabilities available)
                          if y_prob is not None and len(model.classes_) == 2:
                              st.subheader("ROC Curve & AUC")
                              fpr, tpr, _ = roc_curve(y_test, y_prob[:, 1])
                              roc_auc = auc(fpr, tpr)
-                             st.session_state.metrics['AUC'] = roc_auc # Store AUC
+                             st.session_state.metrics['AUC'] = roc_auc
 
                              fig_roc = go.Figure()
                              fig_roc.add_trace(go.Scatter(x=fpr, y=tpr, mode='lines', name=f'ROC curve (AUC = {roc_auc:.3f})', line=dict(color='#ff6e40', width=3)))
@@ -1556,14 +1582,11 @@ elif st.session_state.stage == 6:
                              fig_roc.update_layout(title='Receiver Operating Characteristic (ROC) Curve', xaxis_title='False Positive Rate (1 - Specificity)', yaxis_title='True Positive Rate (Sensitivity/Recall)', legend=dict(x=0.6, y=0.1))
                              st.plotly_chart(fig_roc, use_container_width=True)
 
-                         # Precision-Recall Curve (if binary and probabilities available)
                          if y_prob is not None and len(model.classes_) == 2:
                              st.subheader("Precision-Recall Curve")
                              precision, recall, _ = precision_recall_curve(y_test, y_prob[:, 1])
                              avg_precision = average_precision_score(y_test, y_prob[:, 1])
-                             st.session_state.metrics['Average Precision'] = avg_precision # Store AP
-
-                             # Baseline precision is the proportion of the positive class
+                             st.session_state.metrics['Average Precision'] = avg_precision
                              no_skill = len(y_test[y_test==1]) / len(y_test) if len(y_test) > 0 else 0
 
                              fig_pr = go.Figure()
@@ -1591,51 +1614,41 @@ elif st.session_state.stage == 6:
                      st.markdown("#### Cluster Quality Metrics")
                      col_m1, col_m2 = st.columns(2)
                      col_m1.metric("Number of Clusters (k)", model.n_clusters)
-                     col_m2.metric("Inertia (WSS)", f"{st.session_state.metrics.get('Inertia', 'N/A'):.2f}")
+                     # Use metrics stored during training
+                     inertia_val = st.session_state.metrics.get('Inertia', 'N/A')
+                     sil_score_val = st.session_state.metrics.get('Silhouette Score', 'N/A')
+                     col_m2.metric("Inertia (WSS)", f"{inertia_val:.2f}" if isinstance(inertia_val, float) else inertia_val)
+                     st.metric("Silhouette Score", f"{sil_score_val:.3f}" if isinstance(sil_score_val, float) else sil_score_val, help="Score between -1 (incorrect) and +1 (dense, well-separated). 0 indicates overlaps.")
 
-                     if 'Silhouette Score' in st.session_state.metrics:
-                          st.metric("Silhouette Score", f"{st.session_state.metrics.get('Silhouette Score', 'N/A'):.3f}", help="Score between -1 (incorrect clustering) and +1 (dense, well-separated clusters). 0 indicates overlapping clusters.")
-                     else:
-                          # Try calculating here if not done during training
-                          try:
-                              silhouette_avg = silhouette_score(st.session_state.X_scaled, st.session_state.clusters)
-                              st.metric("Silhouette Score", f"{silhouette_avg:.3f}")
-                              st.session_state.metrics['Silhouette Score'] = silhouette_avg
-                          except Exception as sil_e:
-                              st.metric("Silhouette Score", "N/A")
-                              st.warning(f"Could not calculate silhouette score: {sil_e}")
                      st.markdown("---")
 
-                     # Elbow Method Plot (Optional Calculation - Reuse if calculated in training)
                      st.subheader("Elbow Method for Optimal k")
                      if st.button("Calculate Elbow Curve (may take time)"):
                          with st.spinner("Calculating inertia for different k values..."):
                               if 'X_scaled' in st.session_state and st.session_state.X_scaled is not None:
-                                  X_scaled = st.session_state.X_scaled
+                                  X_scaled_elbow = st.session_state.X_scaled
                                   inertia_values = []
-                                  k_range = range(2, 16) # Check k from 2 to 15
+                                  k_range = range(2, 16)
                                   try:
                                       for k_val in k_range:
                                           kmeans_elbow = KMeans(n_clusters=k_val, init='k-means++', n_init=10, max_iter=300, random_state=42)
-                                          kmeans_elbow.fit(X_scaled)
+                                          kmeans_elbow.fit(X_scaled_elbow)
                                           inertia_values.append(kmeans_elbow.inertia_)
 
                                       elbow_df = pd.DataFrame({'k': k_range, 'Inertia': inertia_values})
                                       fig_elbow = px.line(elbow_df, x='k', y='Inertia', title='Elbow Method for Optimal k', markers=True)
                                       fig_elbow.update_layout(xaxis_title='Number of Clusters (k)', yaxis_title='Inertia (Within-Cluster Sum of Squares)')
-                                      # Highlight the chosen k
                                       chosen_k = st.session_state.get('kmeans_k', model.n_clusters)
                                       fig_elbow.add_vline(x=chosen_k, line_width=2, line_dash="dash", line_color="red", annotation_text=f"Chosen k={chosen_k}")
                                       st.plotly_chart(fig_elbow, use_container_width=True)
-                                      st.info("Look for the 'elbow' point where the rate of decrease in inertia slows down significantly. This suggests a reasonable trade-off between number of clusters and variance explained.")
+                                      st.info("Look for the 'elbow' point where the rate of decrease in inertia slows down significantly.")
                                   except Exception as e:
                                        st.error(f"Error calculating elbow curve: {e}")
                                        traceback.print_exc()
-
                               else:
                                    st.warning("Scaled data not found. Cannot calculate elbow curve.")
                      else:
-                          st.info("Click the button above to calculate and visualize the Elbow curve to help assess the chosen number of clusters (k).")
+                          st.info("Click the button above to calculate and visualize the Elbow curve.")
 
 
                      st.session_state.evaluation_done = True
@@ -1668,17 +1681,27 @@ elif st.session_state.stage == 7:
             model_type = st.session_state.model_type
             st.subheader(f"Final Results for {model_type}")
 
-            # Display key metrics again
             st.markdown("#### Summary Metrics")
             metrics = st.session_state.metrics
             if metrics:
-                 cols = st.columns(len(metrics))
-                 i = 0
-                 for name, value in metrics.items():
-                     if isinstance(value, (int, float)):
-                         cols[i].metric(name, f"{value:.3f}")
-                         i = (i + 1) % len(metrics)
-                     # Add specific handling if needed (e.g., conf matrix display)
+                 # Determine number of columns needed (max 3 per row)
+                 num_metrics = sum(1 for v in metrics.values() if isinstance(v, (int, float)))
+                 num_cols = min(num_metrics, 3)
+                 if num_cols > 0:
+                      cols = st.columns(num_cols)
+                      i = 0
+                      for name, value in metrics.items():
+                           if isinstance(value, (int, float)):
+                                cols[i % num_cols].metric(name, f"{value:.3f}")
+                                i += 1
+                 # Display non-numeric metrics separately if needed
+                 if 'Confusion Matrix' in metrics:
+                      st.write("**Confusion Matrix:**")
+                      st.dataframe(pd.DataFrame(metrics['Confusion Matrix'], index=st.session_state.model.classes_, columns=st.session_state.model.classes_))
+                 if 'Classification Report' in metrics:
+                      st.write("**Classification Report:**")
+                      st.dataframe(pd.DataFrame(metrics['Classification Report']).transpose().style.format("{:.3f}"))
+
             else:
                  st.info("No metrics were calculated or stored from the Evaluation stage.")
             st.markdown("---")
@@ -1687,7 +1710,6 @@ elif st.session_state.stage == 7:
             if model_type == "Linear Regression":
                 if 'predictions' in st.session_state and st.session_state.predictions is not None and 'y_test' in st.session_state:
                     st.subheader("Key Visualizations")
-                    # Re-display Actual vs Predicted
                     y_test = st.session_state.y_test
                     y_pred = st.session_state.predictions
                     fig_pred = go.Figure()
@@ -1696,18 +1718,16 @@ elif st.session_state.stage == 7:
                     fig_pred.update_layout(title='Final: Actual vs. Predicted Values', xaxis_title='Actual Values', yaxis_title='Predicted Values', legend_title="Legend")
                     st.plotly_chart(fig_pred, use_container_width=True)
 
-                    # Feature Importance / Coefficients
                     model = st.session_state.model
                     coef_df = pd.DataFrame({
                            'Feature': st.session_state.features,
                            'Coefficient': model.coef_
-                       }).sort_values('Coefficient', key=abs, ascending=True) # Horizontal bar looks better ascending
+                       }).sort_values('Coefficient', key=abs, ascending=True)
                     st.subheader("Feature Importance (Coefficient Magnitude)")
                     fig_coef_imp = px.bar(coef_df, y='Feature', x='Coefficient', orientation='h', title='Feature Coefficients (Sorted by Absolute Value)', color='Coefficient', color_continuous_scale='RdBu')
                     st.plotly_chart(fig_coef_imp, use_container_width=True)
                     st.caption("Features with larger absolute coefficients have a stronger linear influence on the target variable in this model.")
 
-                    # Download Predictions
                     pred_df = pd.DataFrame({'Actual': y_test, 'Predicted': y_pred})
                     st.markdown(get_download_link(pred_df, 'linear_regression_predictions.csv', 'Download Test Predictions'), unsafe_allow_html=True)
 
@@ -1718,7 +1738,6 @@ elif st.session_state.stage == 7:
             elif model_type == "Logistic Regression":
                  if 'metrics' in st.session_state and st.session_state.metrics:
                     st.subheader("Key Visualizations")
-                    # Re-display Confusion Matrix
                     conf_matrix = st.session_state.metrics.get('Confusion Matrix')
                     if conf_matrix is not None:
                         labels = st.session_state.model.classes_
@@ -1727,38 +1746,37 @@ elif st.session_state.stage == 7:
                         fig_conf.update_xaxes(side="bottom")
                         st.plotly_chart(fig_conf, use_container_width=True)
 
-                    # Re-display ROC Curve (if available)
                     if 'probabilities' in st.session_state and st.session_state.probabilities is not None and len(st.session_state.model.classes_) == 2:
                          y_test = st.session_state.y_test
                          y_prob = st.session_state.probabilities
                          fpr, tpr, _ = roc_curve(y_test, y_prob[:, 1])
-                         roc_auc = st.session_state.metrics.get('AUC', auc(fpr, tpr)) # Use stored or recalc
+                         roc_auc = st.session_state.metrics.get('AUC', auc(fpr, tpr))
                          fig_roc = go.Figure()
                          fig_roc.add_trace(go.Scatter(x=fpr, y=tpr, mode='lines', name=f'ROC curve (AUC = {roc_auc:.3f})', line=dict(color='#ff6e40', width=3)))
                          fig_roc.add_trace(go.Scatter(x=[0, 1], y=[0, 1], mode='lines', name='No Skill (AUC = 0.5)', line=dict(color='#1e3d59', dash='dash')))
                          fig_roc.update_layout(title='Final: Receiver Operating Characteristic (ROC) Curve', xaxis_title='False Positive Rate', yaxis_title='True Positive Rate')
                          st.plotly_chart(fig_roc, use_container_width=True)
+                    elif len(st.session_state.model.classes_) != 2:
+                         st.info("ROC curve is typically shown for binary classification.")
 
-                    # Feature Importance / Coefficients
                     model = st.session_state.model
-                    if len(model.classes_) > 2: coefs = model.coef_[0]; title_suffix = f" (Class {model.classes_[0]} vs Rest)" # Default view
+                    if len(model.classes_) > 2: coefs = model.coef_[0]; title_suffix = f" (Class {model.classes_[0]} vs Rest)"
                     else: coefs = model.coef_[0]; title_suffix = f" (Class {model.classes_[1]} vs {model.classes_[0]})"
                     coef_df = pd.DataFrame({
                            'Feature': st.session_state.features,
                            'Coefficient': coefs
-                       }).sort_values('Coefficient', key=abs, ascending=True) # Horizontal bar looks better ascending
+                       }).sort_values('Coefficient', key=abs, ascending=True)
                     st.subheader("Feature Importance (Coefficient Magnitude)")
                     fig_coef_imp = px.bar(coef_df, y='Feature', x='Coefficient', orientation='h', title=f'Feature Coefficients{title_suffix}', color='Coefficient', color_continuous_scale='RdBu')
                     st.plotly_chart(fig_coef_imp, use_container_width=True)
                     st.caption("Positive coefficients increase the log-odds of the positive class, negative coefficients decrease it.")
 
-                    # Download Predictions
+                    # Prepare download data
                     pred_df = pd.DataFrame({'Actual': st.session_state.y_test, 'Predicted': st.session_state.predictions})
                     if st.session_state.probabilities is not None:
                          for i, cls_label in enumerate(model.classes_):
                               pred_df[f'Probability_Class_{cls_label}'] = st.session_state.probabilities[:, i]
                     st.markdown(get_download_link(pred_df, 'logistic_regression_predictions.csv', 'Download Test Predictions & Probabilities'), unsafe_allow_html=True)
-
 
                  else:
                       st.warning("Evaluation metrics not found.")
@@ -1773,14 +1791,13 @@ elif st.session_state.stage == 7:
                      n_features = X_scaled.shape[1]
 
                      st.subheader("Cluster Visualization (using PCA)")
-
                      if n_features < 2:
                          st.warning("Need at least 2 features for PCA visualization.")
                      else:
                          pca = PCA(n_components=2, random_state=42)
                          X_pca = pca.fit_transform(X_scaled)
                          pca_df = pd.DataFrame(X_pca, columns=['PC1', 'PC2'])
-                         pca_df['Cluster'] = clusters.astype(str) # Categorical for colors
+                         pca_df['Cluster'] = clusters.astype(str)
                          pca_explained_variance = pca.explained_variance_ratio_.sum()
 
                          fig_clusters_pca = px.scatter(pca_df, x='PC1', y='PC2', color='Cluster', title=f"Clusters in PCA Space (Explains {pca_explained_variance:.1%} of Variance)",
@@ -1789,13 +1806,11 @@ elif st.session_state.stage == 7:
                          fig_clusters_pca.update_layout(legend_title_text='Cluster ID')
                          st.plotly_chart(fig_clusters_pca, use_container_width=True)
 
-                     # Parallel Coordinates Plot (if enough features)
                      if n_features > 1:
                          st.subheader("Parallel Coordinates Plot of Clusters")
                          try:
                              parallel_df = pd.DataFrame(X_scaled, columns=features)
                              parallel_df['Cluster'] = clusters.astype(str)
-                             # Sample if large
                              sample_size_pc = 5000
                              if len(parallel_df) > sample_size_pc:
                                   parallel_df_sampled = parallel_df.sample(sample_size_pc, random_state=42)
@@ -1805,32 +1820,31 @@ elif st.session_state.stage == 7:
 
                              fig_parallel = px.parallel_coordinates(parallel_df_sampled, dimensions=features, color='Cluster',
                                                                   title="Feature Values Across Clusters (Scaled Data)",
-                                                                  color_continuous_scale=px.colors.sequential.Viridis) # Use Viridis for better color mapping on numbers
+                                                                  color_continuous_scale=px.colors.sequential.Viridis)
                              st.plotly_chart(fig_parallel, use_container_width=True)
-                             st.caption("This plot helps visualize how different features contribute to cluster separation. Lines represent individual data points.")
+                             st.caption("Visualize how features differ across clusters. Lines are individual data points.")
                          except Exception as e:
                               st.warning(f"Could not generate parallel coordinates plot: {e}")
 
-                     # Feature Distributions per Cluster
                      st.subheader("Feature Distributions by Cluster")
                      feat_dist_select = st.selectbox("Select feature to compare distributions:", features, key="dist_feat_cluster_final")
-                     # Get original data before scaling
-                     X_original = st.session_state.X_train # Assumes X_train holds the unscaled data used for clustering
+                     X_original = st.session_state.X_train # Assumes unscaled data stored here
                      if X_original is not None and feat_dist_select in X_original.columns:
                          dist_df = X_original[[feat_dist_select]].copy()
-                         dist_df['Cluster'] = clusters.astype(str)
-                         y_label = f"{feat_dist_select} (Original Scale)"
-
-                         fig_dist = px.box(dist_df, x='Cluster', y=feat_dist_select, color='Cluster', title=f"Distribution of {feat_dist_select} by Cluster",
-                                           labels={'Cluster': 'Cluster ID', feat_dist_select: y_label}, color_discrete_sequence=px.colors.qualitative.Pastel)
-                         st.plotly_chart(fig_dist, use_container_width=True)
+                         # Ensure indices align if X_original was modified (e.g., dropna)
+                         if len(dist_df) == len(clusters):
+                             dist_df['Cluster'] = clusters.astype(str)
+                             y_label = f"{feat_dist_select} (Original Scale)"
+                             fig_dist = px.box(dist_df, x='Cluster', y=feat_dist_select, color='Cluster', title=f"Distribution of {feat_dist_select} by Cluster",
+                                               labels={'Cluster': 'Cluster ID', feat_dist_select: y_label}, color_discrete_sequence=px.colors.qualitative.Pastel)
+                             st.plotly_chart(fig_dist, use_container_width=True)
+                         else:
+                             st.warning(f"Data length mismatch ({len(dist_df)} vs {len(clusters)}). Cannot plot feature distribution accurately.")
                      else:
-                          st.warning(f"Could not retrieve original data for '{feat_dist_select}'. Please check previous steps.")
+                          st.warning(f"Could not retrieve original data for '{feat_dist_select}'.")
 
-
-                     # Download Clustered Data
                      try:
-                         clustered_df = st.session_state.X_train.copy() # Start with original features before scaling
+                         clustered_df = st.session_state.X_train.copy()
                          clustered_df['ClusterAssignment'] = clusters
                          st.markdown(get_download_link(clustered_df, 'kmeans_clustered_data.csv', 'Download Clustered Data'), unsafe_allow_html=True)
                      except Exception as e:
@@ -1857,3 +1871,4 @@ elif st.session_state.stage != 0: # Should not happen if logic is correct
     st.error("An unexpected application state was reached. Resetting.")
     reset_app()
     st.rerun()
+```
