@@ -115,10 +115,10 @@ def set_harry_potter_theme():
        color: #D3A625 !important;
     }}
 
-    /* Custom cursor - Optional, can be annoying */
-    /* * {
+    /* Custom cursor - Optional, can be annoying - COMMENTED OUT TO FIX NameError */
+    /* * {{
         cursor: url("https://cur.cursors-4u.net/symbols/sym-1/sym51.cur"), auto !important;
-    } */
+    }} */
 
     /* Success/Info/Error message styling */
     div[data-baseweb="notification"].stNotification {{
