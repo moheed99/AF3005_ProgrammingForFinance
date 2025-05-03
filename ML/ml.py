@@ -1871,4 +1871,3 @@ elif st.session_state.stage != 0: # Should not happen if logic is correct
     st.error("An unexpected application state was reached. Resetting.")
     reset_app()
     st.rerun()
-```
