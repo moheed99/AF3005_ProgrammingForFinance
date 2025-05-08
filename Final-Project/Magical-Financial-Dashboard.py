@@ -645,9 +645,9 @@ elif app_mode == "Financial Crystal Ball":
 elif app_mode == "Magical Stocks":
     animated_header("Magical Stocks Portfolio")
     
-    st.markdown(""")
-    <div style="background-color: rgba(0,0,0,0.7); border-radius: 10px; padding: 20px; margin-bottom: 20px; border: 1px solid #d4af37;">
-        <h2>Wizard Stock Market 📈</h2>
-        <p>Track real-time stock market data with the power of YFinance, as if you had a Time-Turner!</p>
-    </div>
-    """, unsafe
+    st.markdown("""
+<div style="background-color: rgba(0,0,0,0.7); border-radius: 10px; padding: 20px; margin-bottom: 20px; border: 1px solid #d4af37;">
+    <h2>Wizard Stock Market 📈</h2>
+    <p>Track real-time stock market data with the power of YFinance, as if you had a Time-Turner!</p>
+</div>
+""", unsafe_allow_html=True)
