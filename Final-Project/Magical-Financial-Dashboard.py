@@ -61,6 +61,41 @@ remote_css("https://fonts.googleapis.com/css2?family=MedievalSharp&display=swap"
 
 background_css = f"""
 <style>
+@keyframes neonBorderMove {{
+  0% {{
+    filter: drop-shadow(0 0 6px {theme["primary"]});
+    box-shadow:
+      0 0 10px {theme["primary"]},
+      inset 0 0 10px {theme["primary"]};
+    border-image-slice: 1;
+    border-width: 4px;
+    border-style: solid;
+    border-image-source: linear-gradient(45deg, {theme["primary"]}, {theme["secondary"]}, {theme["primary"]});
+    background-position: 0% 50%;
+  }}
+  50% {{
+    background-position: 100% 50%;
+    filter: drop-shadow(0 0 12px {theme["secondary"]});
+  }}
+  100% {{
+    filter: drop-shadow(0 0 6px {theme["primary"]});
+    background-position: 0% 50%;
+  }}
+}}
+
+/* Neon animated border for container blocks */
+.css-1r6slb0, .css-1d391kg {{
+  position: relative;
+  background-color: rgba(44, 26, 79, 0.85);
+  padding: 20px;
+  border-radius: 20px;
+  border: 4px solid transparent;
+  animation: neonBorderMove 4s ease-in-out infinite;
+  background-image: linear-gradient(0deg, #2c1a4f, #2c1a4f), linear-gradient(45deg, {theme["primary"]}, {theme["secondary"]}, {theme["primary"]});
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+}}
+
 body {{
     background-image: url('{theme["background"]}');
     background-size: cover;
@@ -86,25 +121,33 @@ h3 {{
     text-shadow: 1px 1px 2px black;
 }}
 
+/* Neon animated border and glow for buttons */
 .stButton>button {{
   background: {theme["button_bg"]};
+  border: 4px solid transparent;
   border-radius: 12px;
-  border: none;
   color: black;
   font-weight: bold;
   padding: 12px 28px;
   font-size: 20px;
   cursor: pointer;
   transition: all 0.4s ease;
-  box-shadow: 0 0 15px {theme["primary"]};
-  animation: glow 2s infinite alternate;
+  box-shadow:
+    0 0 10px {theme["primary"]},
+    inset 0 0 10px {theme["primary"]};
+  animation: neonBorderMove 4s ease-in-out infinite;
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  position: relative;
+  z-index: 1;
 }}
 .stButton>button:hover {{
   background: {theme["button_hover_bg"]};
-  box-shadow: 0 0 25px 10px {theme["primary"]};
+  box-shadow: 0 0 35px 10px {theme["primary"]};
   transform: scale(1.15) rotate(-2deg);
   color: black;
 }}
+
 @keyframes glow {{
   0% {{
     box-shadow: 0 0 10px {theme["primary"]};
@@ -124,13 +167,6 @@ h3 {{
   border: 1px solid {theme["primary"]};
   padding: 10px;
   font-size: 16px;
-}}
-
-.css-1r6slb0, .css-1d391kg {{
-  background-color: rgba(44, 26, 79, 0.85);
-  padding: 20px;
-  border-radius: 20px;
-  box-shadow: 0 0 15px {theme["primary"]};
 }}
 
 .sidebar .sidebar-content {{
@@ -180,6 +216,7 @@ st.markdown(background_css, unsafe_allow_html=True)
 WAND = "🪄"
 
 # Sidebar page navigation & data source options
+st.sidebar.title("Harry Potter Financial Mystics")
 st.sidebar.markdown("### Navigate the pages")
 page = st.sidebar.radio("", ["Welcome", "Data Exploration", "ML Models", "Stock Market Live Dashboard"])
 
@@ -218,8 +255,6 @@ def load_data_from_stock():
 def reset_data():
     st.session_state.df = None
     st.session_state.ticker_data = None
-
-# Pages below unchanged but colors updated dynamically
 
 def welcome_page():
     st.title(f"Welcome to Harry Potter Financial Mystics {WAND}")
@@ -464,7 +499,7 @@ elif page == "ML Models":
 elif page == "Stock Market Live Dashboard":
     stock_market_dashboard()
 
-# Footer with animated magic button themed by house
+# Footer with animated magic button themed by house with neon border
 st.markdown("---")
 col1, col2, col3 = st.columns([1, 3, 1])
 with col2:
@@ -473,24 +508,40 @@ with col2:
     .magic-btn {{
         font-family: 'Creepster', cursive;
         background: {theme["button_bg"]};
+        border: 4px solid transparent;
+        border-radius: 50px;
         color: black;
         font-size: 24px;
         padding: 16px 60px;
-        border-radius: 50px;
-        border: none;
         cursor: pointer;
-        box-shadow: 0 0 20px {theme["primary"]};
-        animation: pulseGlow 2.5s infinite alternate;
+        box-shadow:
+            0 0 20px {theme["primary"]},
+            inset 0 0 20px {theme["primary"]};
+        animation: neonBorderMove 4s ease-in-out infinite;
         transition: transform 0.3s ease;
+        position: relative;
+        z-index: 1;
     }}
     .magic-btn:hover {{
         box-shadow: 0 0 40px 10px {theme["primary"]};
         transform: scale(1.2) rotate(-5deg);
     }}
-    @keyframes pulseGlow {{
-        0% {{box-shadow: 0 0 20px {theme["primary"]};}}
-        50% {{box-shadow: 0 0 40px 20px {theme["primary"]};}}
-        100% {{box-shadow: 0 0 20px {theme["primary"]};}}
+    @keyframes neonBorderMove {{
+      0% {{
+        filter: drop-shadow(0 0 6px {theme["primary"]});
+        box-shadow:
+          0 0 10px {theme["primary"]},
+          inset 0 0 10px {theme["primary"]};
+        background-position: 0% 50%;
+      }}
+      50% {{
+        background-position: 100% 50%;
+        filter: drop-shadow(0 0 12px {theme["secondary"]});
+      }}
+      100% {{
+        filter: drop-shadow(0 0 6px {theme["primary"]});
+        background-position: 0% 50%;
+      }}
     }}
     </style>
     <button class="magic-btn" onclick="alert('May your financial spells always succeed!')">✨ Cast Your Financial Spell ✨</button>
