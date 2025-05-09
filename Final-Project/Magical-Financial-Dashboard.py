@@ -18,10 +18,10 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# House theme backgrounds and color schemes
+# Updated backgrounds with Harry Potter live photos/gifs
 house_themes = {
     "None": {
-        "background": "https://i.pinimg.com/originals/56/89/1f/56891f669a0229aa72633cc00eb4e35c.jpg",
+        "background": "https://i.pinimg.com/originals/56/89/1f/56891f669a0229aa72633cc00eb4e35c.jpg", # Magical night sky generic
         "primary": "#fedd00",
         "secondary": "#662d91",
         "text": "#eee7db",
@@ -29,7 +29,7 @@ house_themes = {
         "button_hover_bg": "linear-gradient(45deg, #fedd00, #662d91)"
     },
     "Gryffindor": {
-        "background": "https://i.pinimg.com/originals/06/9f/b6/069fb6b232ca2e2717be306e65aacb65.gif",  # flickering flames gif
+        "background": "https://media.giphy.com/media/3o7aD7c53r5zQTXuVy/giphy.gif",  # cozy fireplace animated gif reminiscent of Gryffindor common room
         "primary": "#7F0909",  # dark red
         "secondary": "#FFC500",  # gold
         "text": "#fff2cc",
@@ -37,7 +37,7 @@ house_themes = {
         "button_hover_bg": "linear-gradient(45deg, #FFC500, #7F0909)"
     },
     "Slytherin": {
-        "background": "https://i.pinimg.com/originals/c2/6c/30/c26c3047eae36b747ba0033d285c4830.gif", # green mist gif
+        "background": "https://media.giphy.com/media/l0MYt5jPR6QX5pnqM/giphy.gif", # dark green swirling mist or magical ambiance
         "primary": "#1A472A",  # dark green
         "secondary": "#AAAAAA",  # silver/gray
         "text": "#d0f0c0",
@@ -179,7 +179,7 @@ st.markdown(background_css, unsafe_allow_html=True)
 # Magical wand unicode
 WAND = "🪄"
 
-# Sidebar page navigation & data source options same as before
+# Sidebar page navigation & data source options
 st.sidebar.markdown("### Navigate the pages")
 page = st.sidebar.radio("", ["Welcome", "Data Exploration", "ML Models", "Stock Market Live Dashboard"])
 
@@ -219,7 +219,7 @@ def reset_data():
     st.session_state.df = None
     st.session_state.ticker_data = None
 
-# Pages below unchanged but with colors from theme, repeated here for clarity
+# Pages below unchanged but colors updated dynamically
 
 def welcome_page():
     st.title(f"Welcome to Harry Potter Financial Mystics {WAND}")
@@ -496,3 +496,4 @@ with col2:
     <button class="magic-btn" onclick="alert('May your financial spells always succeed!')">✨ Cast Your Financial Spell ✨</button>
     """
     st.markdown(magic_button_code, unsafe_allow_html=True)
+
