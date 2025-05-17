@@ -99,19 +99,6 @@ background_css = f"""
   }}
 }}
 
-/* Neon animated border for container blocks */
-.css-1r6slb0, .css-1d391kg {{
-  position: relative;
-  background-color: rgba(44, 26, 79, 0.85);
-  padding: 20px;
-  border-radius: 20px;
-  border: 4px solid transparent;
-  animation: neonBorderMove 4s ease-in-out infinite;
-  background-image: linear-gradient(0deg, #2c1a4f, #2c1a4f), linear-gradient(45deg, {theme["primary"]}, {theme["secondary"]}, {theme["primary"]});
-  background-origin: border-box;
-  background-clip: padding-box, border-box;
-}}
-
 body {{
     background-image: url('{theme["background"]}');
     background-size: cover;
@@ -120,6 +107,9 @@ body {{
     font-family: 'MedievalSharp', cursive;
     margin: 0;
     padding: 0;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
 }}
 
 h1, h2, h3, .css-1v0mbdj, .st-b, .css-1d391kg {{
@@ -295,6 +285,19 @@ def welcome_page():
             font-size: 1.5em;
             max-width: 600px;
             margin-bottom: 30px;
+        }}
+        .welcome-screen button {{
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 15px 32px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 8px;
         }}
         </style>
         <div class="welcome-screen">
