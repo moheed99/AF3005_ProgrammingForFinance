@@ -77,28 +77,6 @@ remote_css("https://fonts.googleapis.com/css2?family=MedievalSharp&display=swap"
 
 background_css = f"""
 <style>
-@keyframes neonBorderMove {{
-  0% {{
-    filter: drop-shadow(0 0 6px {theme["primary"]});
-    box-shadow:
-      0 0 10px {theme["primary"]},
-      inset 0 0 10px {theme["primary"]};
-    border-image-slice: 1;
-    border-width: 4px;
-    border-style: solid;
-    border-image-source: linear-gradient(45deg, {theme["primary"]}, {theme["secondary"]}, {theme["primary"]});
-    background-position: 0% 50%;
-  }}
-  50% {{
-    background-position: 100% 50%;
-    filter: drop-shadow(0 0 12px {theme["secondary"]});
-  }}
-  100% {{
-    filter: drop-shadow(0 0 6px {theme["primary"]});
-    background-position: 0% 50%;
-  }}
-}}
-
 body {{
     background-image: url('{theme["background"]}');
     background-size: cover;
