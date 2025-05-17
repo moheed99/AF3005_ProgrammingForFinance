@@ -9,572 +9,435 @@ import matplotlib.pyplot as plt
 import plotly.graph_objs as go
 import yfinance as yf
 import seaborn as sns
+import time
+import random
 
-# Set page config
+# --- Constants for Publicly Available Assets (Examples) ---
+HOGWARTS_CREST_URL = "https://i.imgur.com/Bt5Uyvw.png"
+GRYFFINDOR_LOGO_URL = "https://i.imgur.com/nCU2QKo.png"
+SLYTHERIN_LOGO_URL = "https://i.imgur.com/DZ9tEb2.png"
+HUFFLEPUFF_LOGO_URL = "https://i.imgur.com/vQT68mS.png"
+RAVENCLAW_LOGO_URL = "https://i.imgur.com/RoTJCGM.png"
+
+DEFAULT_HOGWARTS_VIDEO_URL = "https://i.imgur.com/xnTzwxu.mp4"
+GRYFFINDOR_VIDEO_URL = "https://i.imgur.com/nXEZb5S.mp4"
+SLYTHERIN_VIDEO_URL = "https://i.imgur.com/tWEp9VH.mp4"
+HUFFLEPUFF_VIDEO_URL = "https://i.imgur.com/Xqzc2OQ.mp4"
+RAVENCLAW_VIDEO_URL = "https://i.imgur.com/C5UmTTK.mp4"
+
+DEFAULT_STATIC_BACKGROUND_URL = "https://i.imgur.com/6hZ0Q1M.jpg"
+GRYFFINDOR_STATIC_BACKGROUND_URL = "https://i.imgur.com/9gD0x0g.jpg"
+SLYTHERIN_STATIC_BACKGROUND_URL = "https://i.imgur.com/pwxpNrN.jpg"
+HUFFLEPUFF_STATIC_BACKGROUND_URL = "https://i.imgur.com/B9Y4S9A.jpg"
+RAVENCLAW_STATIC_BACKGROUND_URL = "https://i.imgur.com/s6p0NKy.jpg"
+
+ARTIFACT_GIF_1_URL = "https://i.imgur.com/uQKGWJZ.gif"
+ARTIFACT_GIF_2_URL = "https://i.imgur.com/xAQbA1N.gif"
+ARTIFACT_GIF_3_URL = "https://i.imgur.com/N7PmfTI.gif"
+CONSTRUCTION_GIF_URL = "https://i.imgur.com/9jY2L4K.gif"
+OBSERVATORY_GIF_URL = "https://i.imgur.com/lqzJCQW.gif"
+NO_DATA_IMAGE_URL = "https://i.imgur.com/gbsU7V1.gif"
+
 st.set_page_config(
-    page_title="Harry Potter Financial Mystics - Themed",
-    page_icon="🧙‍♂️",
-    layout="wide",
-    initial_sidebar_state="expanded",
+    page_title="Harry Potter Financial Mystics - Futuristic Wizarding World",
+    page_icon="🧙‍♂️", layout="wide", initial_sidebar_state="expanded"
 )
 
-# Updated backgrounds with Harry Potter live photos/gifs
 house_themes = {
-    "None": {
-        "background": "https://wallpapercave.com/wp/wp2182819.jpg", # Hogwarts wallpaper
-        "primary": "#fedd00",
-        "secondary": "#662d91",
-        "text": "#eee7db",
-        "button_bg": "linear-gradient(45deg, #662d91, #fedd00)",
-        "button_hover_bg": "linear-gradient(45deg, #fedd00, #662d91)"
-    },
-    "Gryffindor": {
-        "background": "https://wallpapercave.com/wp/wp2182820.jpg",  # Gryffindor wallpaper
-        "primary": "#7F0909",  # dark red
-        "secondary": "#FFC500",  # gold
-        "text": "#fff2cc",
-        "button_bg": "linear-gradient(45deg, #7F0909, #FFC500)",
-        "button_hover_bg": "linear-gradient(45deg, #FFC500, #7F0909)"
-    },
-    "Slytherin": {
-        "background": "https://wallpapercave.com/wp/wp2182821.jpg", # Slytherin wallpaper
-        "primary": "#1A472A",  # dark green
-        "secondary": "#AAAAAA",  # silver/gray
-        "text": "#d0f0c0",
-        "button_bg": "linear-gradient(45deg, #1A472A, #AAAAAA)",
-        "button_hover_bg": "linear-gradient(45deg, #AAAAAA, #1A472A)"
-    }
+    "None": {"primary":"#fedd00","secondary":"#662d91","text":"#eee7db","button_bg":"linear-gradient(45deg,#662d91,#fedd00)","button_hover_bg":"linear-gradient(45deg,#fedd00,#662d91)","house_logo":HOGWARTS_CREST_URL,"background_video":DEFAULT_HOGWARTS_VIDEO_URL,"background_image_url":DEFAULT_STATIC_BACKGROUND_URL},
+    "Gryffindor": {"primary":"#AE0001","secondary":"#EEBA30","text":"#fff2cc","button_bg":"linear-gradient(45deg,#AE0001,#EEBA30)","button_hover_bg":"linear-gradient(45deg,#EEBA30,#AE0001)","house_logo":GRYFFINDOR_LOGO_URL,"background_video":GRYFFINDOR_VIDEO_URL,"background_image_url":GRYFFINDOR_STATIC_BACKGROUND_URL},
+    "Slytherin": {"primary":"#1A472A","secondary":"#AAAAAA","text":"#d0f0c0","button_bg":"linear-gradient(45deg,#1A472A,#AAAAAA)","button_hover_bg":"linear-gradient(45deg,#AAAAAA,#1A472A)","house_logo":SLYTHERIN_LOGO_URL,"background_video":SLYTHERIN_VIDEO_URL,"background_image_url":SLYTHERIN_STATIC_BACKGROUND_URL},
+    "Hufflepuff": {"primary":"#FFDB00","secondary":"#372E29","text":"#fff8e1","button_bg":"linear-gradient(45deg,#372E29,#FFDB00)","button_hover_bg":"linear-gradient(45deg,#FFDB00,#372E29)","house_logo":HUFFLEPUFF_LOGO_URL,"background_video":HUFFLEPUFF_VIDEO_URL,"background_image_url":HUFFLEPUFF_STATIC_BACKGROUND_URL},
+    "Ravenclaw": {"primary":"#0E1A40","secondary":"#946B2D","text":"#E2F1FF","button_bg":"linear-gradient(45deg,#0E1A40,#946B2D)","button_hover_bg":"linear-gradient(45deg,#946B2D,#0E1A40)","house_logo":RAVENCLAW_LOGO_URL,"background_video":RAVENCLAW_VIDEO_URL,"background_image_url":RAVENCLAW_STATIC_BACKGROUND_URL}
 }
 
-# Select house theme from sidebar
-st.sidebar.title("Harry Potter Financial Mystics")
-selected_house = st.sidebar.selectbox("Choose Your House Theme", options=list(house_themes.keys()))
+st.sidebar.title("Hogwarts Financial Divination")
+selected_house = st.sidebar.selectbox(
+    "Choose Your House", options=list(house_themes.keys()),
+    format_func=lambda x: f"{x} House" if x != "None" else "Hogwarts (Default)"
+)
+theme_config = house_themes[selected_house]
+current_background_image = theme_config.get("background_image_url", DEFAULT_STATIC_BACKGROUND_URL)
 
-theme = house_themes[selected_house]
+house_welcome_messages = {
+    "None":"Welcome to mystical financial divination!","Gryffindor":"Brave Gryffindors! Financial mastery awaits!","Slytherin":"Ambitious Slytherins! Cunning guides strategy!","Hufflepuff":"Loyal Hufflepuffs! Patience yields rewards!","Ravenclaw":"Wise Ravenclaws! Intellect solves mysteries!"
+}
+logo_url_from_theme = theme_config.get("house_logo", HOGWARTS_CREST_URL)
+caption_text = f"The Crest of {selected_house}" if selected_house != "None" else "Hogwarts School"
+st.sidebar.image(logo_url_from_theme, use_container_width=True, caption=caption_text)
+st.sidebar.markdown(f"<h3 style='text-align:center;color:{theme_config['primary']};text-shadow:0 0 5px {theme_config['secondary']};'><i>{house_welcome_messages[selected_house]}</i></h3>", unsafe_allow_html=True)
 
-# Inject fonts & CSS with dynamic colors and backgrounds for selected house
-def remote_css(url):
-    st.markdown(f'<link href="{url}" rel="stylesheet">', unsafe_allow_html=True)
-
+def remote_css(url): st.markdown(f'<link href="{url}" rel="stylesheet">', unsafe_allow_html=True)
 remote_css("https://fonts.googleapis.com/css2?family=Creepster&display=swap")
 remote_css("https://fonts.googleapis.com/css2?family=MedievalSharp&display=swap")
+remote_css("https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap")
+remote_css("https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap")
 
-background_css = f"""
+def hex_to_rgb(hex_color): hex_color = hex_color.lstrip('#'); return tuple(int(hex_color[i:i+2], 16) for i in (0,2,4))
+primary_rgb_tuple = hex_to_rgb(theme_config["primary"]); secondary_rgb_tuple = hex_to_rgb(theme_config["secondary"])
+primary_rgb_css = f"{primary_rgb_tuple[0]},{primary_rgb_tuple[1]},{primary_rgb_tuple[2]}"
+secondary_rgb_css = f"{secondary_rgb_tuple[0]},{secondary_rgb_tuple[1]},{secondary_rgb_tuple[2]}"
+
+dynamic_app_background_css = f"""
 <style>
-@keyframes neonBorderMove {{
-  0% {{
-    filter: drop-shadow(0 0 6px {theme["primary"]});
-    box-shadow:
-      0 0 10px {theme["primary"]},
-      inset 0 0 10px {theme["primary"]};
-    border-image-slice: 1;
-    border-width: 4px;
-    border-style: solid;
-    border-image-source: linear-gradient(45deg, {theme["primary"]}, {theme["secondary"]}, {theme["primary"]});
-    background-position: 0% 50%;
-  }}
-  50% {{
-    background-position: 100% 50%;
-    filter: drop-shadow(0 0 12px {theme["secondary"]});
-  }}
-  100% {{
-    filter: drop-shadow(0 0 6px {theme["primary"]});
-    background-position: 0% 50%;
-  }}
+.stApp {{
+    background-image: url('{current_background_image}'); background-color:#030108; background-size:cover;
+    background-attachment:fixed; background-position:center center; color:{theme_config["text"]};
+    font-family:'Cinzel',serif; margin:0; padding:0; overflow-x:hidden; position:relative; 
 }}
-
-/* Neon animated border for container blocks */
-.css-1r6slb0, .css-1d391kg {{
-  position: relative;
-  background-color: rgba(44, 26, 79, 0.85);
-  padding: 20px;
-  border-radius: 20px;
-  border: 4px solid transparent;
-  animation: neonBorderMove 4s ease-in-out infinite;
-  background-image: linear-gradient(0deg, #2c1a4f, #2c1a4f), linear-gradient(45deg, {theme["primary"]}, {theme["secondary"]}, {theme["primary"]});
-  background-origin: border-box;
-  background-clip: padding-box, border-box;
+.stApp::before {{
+    content:''; position:fixed; top:0; left:0; width:100vw; height:100vh;
+    background-image:url('https://i.imgur.com/WJIc0JL.gif'); background-size:300% 300%;
+    animation:magicSparkle 20s infinite linear; pointer-events:none; z-index:-1; opacity:0.08; 
 }}
-
-body {{
-    background-image: url('{theme["background"]}');
-    background-size: cover;
-    background-attachment: fixed;
-    color: {theme["text"]};
-    font-family: 'MedievalSharp', cursive;
-    margin: 0;
-    padding: 0;
+.css-1d391kg .sidebar .sidebar-content {{ 
+  background-color:rgba(5,2,15,0.75); backdrop-filter:blur(4px); position:relative; overflow:hidden; 
+  border-right:3px solid {theme_config["primary"]}; box-shadow:7px 0 20px rgba({primary_rgb_css},0.4);
 }}
-
-h1, h2, h3, .css-1v0mbdj, .st-b, .css-1d391kg {{
-    font-family: 'Creepster', cursive;
-    color: {theme["primary"]};
-    text-shadow:
-      -1px -1px 0 #000,
-       1px -1px 0 #000,
-      -1px  1px 0 #000,
-       1px  1px 0 #000;
+.css-1d391kg .sidebar .sidebar-content::after {{
+  content:''; position:absolute; top:0; left:0; right:0; bottom:0;
+  background-image:url('https://i.imgur.com/aE3BnKy.gif'); opacity:0.15; z-index:-1;
+  pointer-events:none; animation:magicSparkle 10s infinite linear reverse;
 }}
-h3 {{
-    font-family: 'MedievalSharp', cursive;
-    color: {theme["secondary"]};
-    text-shadow: 1px 1px 2px black;
+.main .block-container {{
+  position:relative; background-color:rgba(5,2,15,0.93); padding:30px !important; border-radius:30px;
+  border:3px solid transparent; animation:neonBorderMove 5s ease-in-out infinite alternate, floatingElement 8s ease-in-out infinite alternate;
+  background-image:linear-gradient(rgba(5,2,15,0.93),rgba(5,2,15,0.93)),linear-gradient(45deg,{theme_config["primary"]},{theme_config["secondary"]},{theme_config["primary"]});
+  background-origin:border-box; background-clip:padding-box,border-box; backdrop-filter:blur(4px);
+  box-shadow:0 10px 40px 0 rgba(0,0,0,0.6); margin-top:2.5rem; margin-bottom:2.5rem;
 }}
-
-/* Neon animated border and glow for buttons */
-.stButton>button {{
-  background: {theme["button_bg"]};
-  border: 4px solid transparent;
-  border-radius: 12px;
-  color: black;
-  font-weight: bold;
-  padding: 12px 28px;
-  font-size: 20px;
-  cursor: pointer;
-  transition: all 0.4s ease;
-  box-shadow:
-    0 0 10px {theme["primary"]},
-    inset 0 0 10px {theme["primary"]};
-  animation: neonBorderMove 4s ease-in-out infinite;
-  background-origin: border-box;
-  background-clip: padding-box, border-box;
-  position: relative;
-  z-index: 1;
-}}
-.stButton>button:hover {{
-  background: {theme["button_hover_bg"]};
-  box-shadow: 0 0 35px 10px {theme["primary"]};
-  transform: scale(1.15) rotate(-2deg);
-  color: black;
-}}
-
-@keyframes glow {{
-  0% {{
-    box-shadow: 0 0 10px {theme["primary"]};
-  }}
-  50% {{
-    box-shadow: 0 0 25px 15px {theme["primary"]};
-  }}
-  100% {{
-    box-shadow: 0 0 10px {theme["primary"]};
-  }}
-}}
-
-.stTextInput>div>input {{
-  background-color: #2c1a4f;
-  color: {theme["primary"]};
-  border-radius: 10px;
-  border: 1px solid {theme["primary"]};
-  padding: 10px;
-  font-size: 16px;
-}}
-
-.sidebar .sidebar-content {{
-  background-image: url('{theme["background"]}');
-  background-size: cover;
-  background-repeat: no-repeat;
-  color: {theme["primary"]} !important;
-}}
-
-.css-1aumxhk {{
-  color: {theme["primary"]} !important;
-}}
-
-@keyframes wand-wiggle {{
-  0% {{ transform: rotate(0deg); }}
-  25% {{ transform: rotate(20deg); }}
-  50% {{ transform: rotate(-20deg); }}
-  75% {{ transform: rotate(20deg); }}
-  100% {{ transform: rotate(0deg); }}
-}}
-.wand-icon {{
-  display: inline-block;
-  animation: wand-wiggle 3s infinite ease-in-out;
-  font-size: 1.4rem;
-  margin-left: 10px;
-}}
-
-::-webkit-scrollbar {{
-  width: 10px;
-}}
-::-webkit-scrollbar-track {{
-  background: #2c1a4f;
-}}
-::-webkit-scrollbar-thumb {{
-  background: {theme["primary"]};
-  border-radius: 10px;
-}}
-
 </style>
 """
+st.markdown(dynamic_app_background_css, unsafe_allow_html=True)
 
-st.markdown(background_css, unsafe_allow_html=True)
+base_css_rules = f"""
+<style>
+@keyframes floatingElement {{0%{{transform:translate(0,0) rotate(0deg)}}25%{{transform:translate(3px,-3px) rotate(.5deg)}}50%{{transform:translate(0,-5px) rotate(0deg)}}75%{{transform:translate(-3px,-3px) rotate(-.5deg)}}100%{{transform:translate(0,0) rotate(0deg)}}}}
+@keyframes neonBorderMove {{0%{{border-image-source:linear-gradient(45deg,{theme_config["primary"]},{theme_config["secondary"]},{theme_config["primary"]})}}50%{{border-image-source:linear-gradient(45deg,{theme_config["secondary"]},{theme_config["primary"]},{theme_config["secondary"]})}}100%{{border-image-source:linear-gradient(45deg,{theme_config["primary"]},{theme_config["secondary"]},{theme_config["primary"]})}}}}
+@keyframes pulseGlow {{0%{{box-shadow:0 0 8px rgba({primary_rgb_css},.7),inset 0 0 8px rgba({primary_rgb_css},.5),0 0 15px {theme_config["primary"]}}}50%{{box-shadow:0 0 12px rgba({primary_rgb_css},.9),inset 0 0 12px rgba({primary_rgb_css},.7),0 0 25px {theme_config["primary"]},0 0 10px {theme_config["secondary"]}}}100%{{box-shadow:0 0 8px rgba({primary_rgb_css},.7),inset 0 0 8px rgba({primary_rgb_css},.5),0 0 15px {theme_config["primary"]}}}}}
+@keyframes magicSparkle {{0%{{background-position:0% 0%}}50%{{background-position:100% 100%}}100%{{background-position:0% 0%}}}}
+#video-background {{position:fixed;top:0;left:0;width:100vw;height:100vh;object-fit:cover;z-index:-2;opacity:.5}}
+h1,h2 {{font-family:'Orbitron','Cinzel',sans-serif;color:{theme_config["primary"]};text-shadow:0 0 10px {theme_config["primary"]},0 0 20px {theme_config["primary"]},0 0 25px rgba(255,255,255,.4);letter-spacing:2px;position:relative}}
+h1 {{font-size:2.8rem}} h2 {{font-size:2.2rem}}
+h1:hover,h2:hover {{animation:titleGlow 1.5s infinite}}
+@keyframes titleGlow {{0%{{text-shadow:0 0 10px {theme_config["primary"]},0 0 20px {theme_config["primary"]},0 0 25px rgba(255,255,255,.4)}}50%{{text-shadow:0 0 15px {theme_config["primary"]},0 0 30px {theme_config["primary"]},0 0 45px {theme_config["secondary"]},0 0 50px rgba(255,255,255,.6)}}100%{{text-shadow:0 0 10px {theme_config["primary"]},0 0 20px {theme_config["primary"]},0 0 25px rgba(255,255,255,.4)}}}}
+h3 {{font-family:'MedievalSharp','Orbitron',cursive;color:{theme_config["secondary"]};text-shadow:0 0 8px {theme_config["secondary"]},0 0 12px rgba({secondary_rgb_css},.8);font-size:1.8rem}}
+.stButton>button {{background:{theme_config["button_bg"]};border:2px solid transparent;border-radius:15px;color:#fff;font-family:'Orbitron','Cinzel',serif;font-weight:700;padding:15px 35px;font-size:18px;cursor:pointer;transition:all .4s ease;position:relative;z-index:1;text-shadow:0 0 5px #000;letter-spacing:1px;animation:neonBorderMove 4s ease-in-out infinite alternate,pulseGlow 2.5s infinite ease-in-out;background-origin:border-box;background-clip:padding-box,border-box}}
+.stButton>button:hover {{background:{theme_config["button_hover_bg"]};transform:scale(1.12) rotate(-1.5deg);color:#fff;animation:none;box-shadow:0 0 35px 10px {theme_config["primary"]},0 0 20px {theme_config["secondary"]}}}
+.stButton>button:hover:before {{content:"✦";position:absolute;top:-20px;left:-20px;font-size:22px;color:{theme_config["secondary"]};animation:floatingSymbol 2.5s infinite ease-in-out;text-shadow:0 0 6px {theme_config["secondary"]}}}
+.stButton>button:hover:after {{content:"✧";position:absolute;bottom:-20px;right:-20px;font-size:22px;color:{theme_config["primary"]};animation:floatingSymbol 2.5s infinite ease-in-out reverse;text-shadow:0 0 6px {theme_config["primary"]}}}
+@keyframes floatingSymbol {{0%{{transform:translate(0,0) rotate(0deg);opacity:.7}}50%{{transform:translate(5px,-5px) rotate(180deg);opacity:1}}100%{{transform:translate(0,0) rotate(360deg);opacity:.7}}}}
+.stTextInput>div>input,.stSelectbox>div>div,.stMultiSelect>div>div,.stDateInput>div>div>input {{background-color:rgba(10,5,25,.8);color:{theme_config["text"]};border-radius:12px;border:2px solid {theme_config["primary"]};padding:12px;font-size:16px;font-family:'Orbitron','Cinzel',serif;transition:all .3s ease;box-shadow:0 0 7px rgba({primary_rgb_css},.6)}}
+.stTextInput>div>input::placeholder {{color:rgba({primary_rgb_css},.7);font-family:'Cinzel',serif}}
+.stTextInput>div>input:focus,.stSelectbox>div>div:focus-within,.stMultiSelect>div>div:focus-within,.stDateInput>div>div>input:focus {{border:2px solid {theme_config["secondary"]};box-shadow:0 0 15px {theme_config["primary"]},0 0 10px {theme_config["secondary"]};background-color:rgba(15,10,35,.9)}}
+.st-emotion-cache-10oheav {{background-color:rgba(5,2,15,.97)!important;border:1px solid {theme_config["primary"]}!important;color:{theme_config["text"]}!important;font-family:'Orbitron','Cinzel',serif!important}}
+.st-emotion-cache-trf2nb:hover {{background-color:rgba({primary_rgb_css},.35)!important;color:{theme_config["primary"]}!important}}
+.css-1d391kg .sidebar .sidebar-content .css-1aumxhk {{color:{theme_config["primary"]}!important;text-shadow:0 0 7px {theme_config["primary"]};font-family:'Orbitron','Cinzel',sans-serif}}
+.css-1d391kg .sidebar .sidebar-content .stRadio label span {{color:{theme_config["text"]}!important;font-size:1.1em;font-family:'Orbitron','Cinzel',sans-serif}}
+.css-1d391kg .sidebar .sidebar-content .stRadio label span:hover {{color:{theme_config["primary"]}!important;text-shadow:0 0 5px {theme_config["primary"]}}}
+@keyframes wand-wiggle{{0%{{transform:rotate(0deg)}}25%{{transform:rotate(18deg)}}50%{{transform:rotate(-18deg)}}75%{{transform:rotate(18deg)}}100%{{transform:rotate(0deg)}}}}
+.wand-icon{{display:inline-block;animation:wand-wiggle 2.2s infinite ease-in-out;font-size:1.7rem;margin-left:10px;position:relative}}
+.wand-icon:after{{content:'✦';position:absolute;color:{theme_config["primary"]};text-shadow:0 0 10px {theme_config["primary"]};border-radius:50%;top:-7px;right:-18px;animation:glow 1.3s infinite alternate;font-size:.9em}}
+@keyframes glow{{0%{{opacity:.6;transform:scale(.9)}}100%{{opacity:1;transform:scale(1.3)}}}}
+::-webkit-scrollbar{{width:14px}} ::-webkit-scrollbar-track{{background:rgba(5,2,15,.8);border-radius:10px;box-shadow:inset 0 0 6px rgba(0,0,0,.4)}} ::-webkit-scrollbar-thumb{{background:linear-gradient(60deg,{theme_config["primary"]},{theme_config["secondary"]});border-radius:10px;border:2px solid rgba(5,2,15,.8)}} ::-webkit-scrollbar-thumb:hover{{background:linear-gradient(60deg,{theme_config["secondary"]},{theme_config["primary"]});box-shadow:0 0 12px {theme_config["primary"]}}}
+.tooltip{{position:relative;display:inline-block;cursor:help}}
+.tooltip .tooltiptext{{visibility:hidden;width:240px;background-color:rgba(5,2,15,.97);color:{theme_config["text"]};text-align:center;border-radius:10px;padding:14px;position:absolute;z-index:100;bottom:135%;left:50%;margin-left:-120px;opacity:0;transition:opacity .4s,transform .4s;transform:translateY(12px);border:1px solid {theme_config["primary"]};box-shadow:0 0 15px rgba({primary_rgb_css},.8);font-size:.95em;font-family:'Cinzel',serif}}
+.tooltip:hover .tooltiptext{{visibility:visible;opacity:1;transform:translateY(0)}}
+.js-plotly-plot{{animation:floatingElement 10s infinite ease-in-out alternate;border-radius:18px;overflow:hidden}}
+.dataframe{{font-family:'Cinzel',serif;border-collapse:separate;border-spacing:0;border-radius:15px;overflow:hidden;border:2px solid {theme_config["primary"]};background-color:rgba(10,5,25,.85);box-shadow:0 0 12px rgba({primary_rgb_css},.4);margin:1.2em 0}}
+.dataframe th{{background:linear-gradient(45deg,{theme_config["primary"]},{theme_config["secondary"]});color:#fff;padding:16px;text-shadow:0 0 6px #000;font-size:1.15em;text-align:left;font-family:'Orbitron','Cinzel',serif}}
+.dataframe td{{padding:14px;border-bottom:1px solid rgba({secondary_rgb_css},.25);color:{theme_config["text"]};font-size:1em}}
+.dataframe tbody tr:hover{{background-color:rgba({primary_rgb_css},.2)}}
+.dataframe tbody tr:nth-child(even){{background-color:rgba({primary_rgb_css},.08)}}
+.dataframe tbody tr:nth-child(even):hover{{background-color:rgba({primary_rgb_css},.25)}}
+@keyframes magicLoading{{0%{{transform:rotate(0deg);border-top-color:{theme_config["primary"]}}}25%{{border-top-color:{theme_config["secondary"]}}}50%{{transform:rotate(180deg);border-top-color:{theme_config["primary"]}}}75%{{border-top-color:{theme_config["secondary"]}}}100%{{transform:rotate(360deg);border-top-color:{theme_config["primary"]}}}}}
+.loading-magic-container{{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:25px}}
+.loading-magic{{display:inline-block;width:75px;height:75px;border:6px solid rgba({primary_rgb_css},.25);border-radius:50%;border-top-color:{theme_config["primary"]};animation:magicLoading 1.1s infinite linear;position:relative;margin-bottom:18px}}
+.loading-magic:before{{content:'';position:absolute;top:6px;left:6px;right:6px;bottom:6px;border-radius:50%;border:5px solid transparent;border-top-color:{theme_config["secondary"]};animation:magicLoading 1.6s infinite linear reverse}}
+.loading-magic-text{{color:{theme_config["text"]};font-family:'MedievalSharp','Orbitron',cursive;font-size:1.3em;text-shadow:0 0 6px {theme_config["primary"]}}}
+@keyframes graphPulse{{0%{{box-shadow:0 0 5px rgba({primary_rgb_css},.5),0 0 10px rgba({secondary_rgb_css},.3)}}50%{{box-shadow:0 0 15px rgba({primary_rgb_css},.8),0 0 22px rgba({secondary_rgb_css},.6)}}100%{{box-shadow:0 0 5px rgba({primary_rgb_css},.5),0 0 10px rgba({secondary_rgb_css},.3)}}}}
+.js-plotly-plot .plotly{{border-radius:18px;animation:graphPulse 3s infinite ease-in-out}}
+.floating-avatar{{animation:floatingElement 6s infinite ease-in-out;border-radius:50%;box-shadow:0 0 18px {theme_config["primary"]},0 0 30px rgba({primary_rgb_css},.6);padding:6px;background-color:rgba({primary_rgb_css},.15)}}
+@keyframes sparkle{{0%{{background-position:200% center}}100%{{background-position:-200% center}}}}
+.sparkling-text{{background:linear-gradient(90deg,{theme_config["text"]},{theme_config["primary"]},{theme_config["secondary"]},{theme_config["primary"]},{theme_config["text"]});background-size:350% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:sparkle 4s linear infinite;font-weight:700}}
+@keyframes wizardHat{{0%{{transform:translateY(0) rotate(0deg)}}25%{{transform:translateY(-9px) rotate(-5deg)}}50%{{transform:translateY(0) rotate(0deg)}}75%{{transform:translateY(-9px) rotate(5deg)}}100%{{transform:translateY(0) rotate(0deg)}}}}
+.wizard-hat{{display:inline-block;font-size:2rem;animation:wizardHat 3s infinite ease-in-out;margin-right:7px}}
+hr{{border:0;height:3px;background-image:linear-gradient(to right,transparent,{theme_config["primary"]},{theme_config["secondary"]},{theme_config["primary"]},transparent);margin:2.2em 0;position:relative;box-shadow:0 0 7px {theme_config["primary"]}}}
+hr:before{{content:'✨';position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:rgba(5,2,15,.95);padding:0 18px;color:{theme_config["secondary"]};font-size:1.6em;text-shadow:0 0 7px {theme_config["secondary"]}}}
+.stProgress>div>div>div>div{{background:linear-gradient(90deg,{theme_config["primary"]},{theme_config["secondary"]});border-radius:10px}}
+.stProgress>div>div>div{{background-color:rgba({secondary_rgb_css},.25);border-radius:10px}}
+.plotly-graph-div .hovertext{{background-color:rgba(5,2,15,.97)!important;border:1px solid {theme_config["primary"]}!important;border-radius:10px!important;box-shadow:0 0 12px rgba({primary_rgb_css},.8)!important;color:{theme_config["text"]}!important;font-family:'Orbitron','Cinzel',serif!important}}
+.plotly-graph-div .hovertext .nums,.plotly-graph-div .hovertext .name{{color:{theme_config["text"]}!important}}
+@keyframes fadeInUp{{from{{opacity:0;transform:translate3d(0,30px,0)}}to{{opacity:1;transform:translate3d(0,0,0)}}}}
+.animated-text{{opacity:0;animation:fadeInUp .9s forwards ease-out}}
+.animated-text-delay-1{{animation-delay:.25s}} .animated-text-delay-2{{animation-delay:.5s}} .animated-text-delay-3{{animation-delay:.75s}}
+.modal-content{{background-color:rgba(5,2,15,.98);border:2px solid {theme_config["primary"]};border-radius:18px;box-shadow:0 0 30px rgba({primary_rgb_css},.7);padding:30px;position:relative}}
+.close-button{{position:absolute;top:18px;right:18px;cursor:pointer;font-size:30px;color:{theme_config["primary"]};transition:color .3s,transform .3s}}
+.close-button:hover{{color:{theme_config["secondary"]};transform:rotate(180deg)}}
+@keyframes glitch{{0%{{clip-path:inset(30% 0 71% 0);transform:translate(-2px,1px)}}10%{{clip-path:inset(10% 0 31% 0);transform:translate(1px,-1px);opacity:.9}}20%{{clip-path:inset(82% 0 1% 0);transform:translate(2px,2px)}}30%{{clip-path:inset(23% 0 41% 0);transform:translate(-1px,-2px);opacity:.85}}40%{{clip-path:inset(13% 0 1% 0);transform:translate(1px,1px);opacity:.9}}50%{{clip-path:inset(55% 0 28% 0);transform:translate(-2px,-1px)}}60%{{clip-path:inset(5% 0 57% 0);transform:translate(2px,1px);opacity:.85}}70%{{clip-path:inset(64% 0 7% 0);transform:translate(-1px,2px)}}80%{{clip-path:inset(38% 0 23% 0);transform:translate(1px,-2px);opacity:.9}}90%{{clip-path:inset(28% 0 43% 0);transform:translate(-2px,1px)}}100%{{clip-path:inset(50% 0 51% 0);transform:translate(0,0);opacity:1}}}}
+.holodeck-container{{position:relative;overflow:hidden;border-radius:18px;padding:25px;background-color:rgba(5,2,15,.75);border:1px solid rgba({primary_rgb_css},.35);box-shadow:0 0 12px rgba({primary_rgb_css},.25);margin-bottom:1.8rem}}
+.holodeck-container:after{{content:'';position:absolute;top:0;left:0;width:100%;height:100%;background:linear-gradient(135deg,rgba({primary_rgb_css},.06) 25%,transparent 25%,transparent 50%,rgba({primary_rgb_css},.06) 50%,rgba({primary_rgb_css},.06) 75%,transparent 75%,transparent 100%);background-size:7px 7px;opacity:.35;animation:glitch 7s infinite linear alternate-reverse;pointer-events:none;z-index:1}}
+.holodeck-container > * {{position:relative;z-index:2;}}
+.hologram{{position:relative;border-radius:12px;overflow:hidden;padding:12px;display:inline-block;background:radial-gradient(ellipse at center,rgba({primary_rgb_css},.18) 0%,rgba({primary_rgb_css},.07) 70%,transparent 100%)}}
+.hologram:before{{content:'';position:absolute;top:-100%;left:0;width:100%;height:300%;background:repeating-linear-gradient(0deg,transparent,transparent 2.5px,rgba({primary_rgb_css},.25) 2.5px,rgba({primary_rgb_css},.25) 3.5px);animation:hologramLines 2.2s infinite linear;pointer-events:none;opacity:.75}}
+@keyframes hologramLines{{0%{{transform:translateY(0%)}}100%{{transform:translateY(33.33%)}}}}
+.hologram img{{opacity:.9;filter:drop-shadow(0 0 12px {theme_config["primary"]})}}
+@keyframes appearsWithSparkles{{0%{{opacity:0;filter:blur(5px);transform:translateY(18px) scale(.93)}}70%{{opacity:.75;filter:blur(1.5px);transform:translateY(0) scale(1.02)}}100%{{opacity:1;filter:blur(0);transform:translateY(0) scale(1)}}}}
+.spell-note{{animation:appearsWithSparkles .9s forwards ease-out;position:relative;padding:1.5rem;border-radius:15px;background-color:rgba(10,5,25,.9);border:1px solid {theme_config["primary"]};margin:1.2rem 0;box-shadow:0 0 12px rgba({primary_rgb_css},.35)}}
+.spell-note:before{{content:"🔮";position:absolute;top:-14px;left:18px;font-size:24px;color:{theme_config["primary"]};background-color:rgba(10,5,25,.98);padding:0 6px;border-radius:50%;text-shadow:0 0 6px {theme_config["primary"]}}}
+.stExpander{{border:1.5px solid {theme_config["primary"]};border-radius:12px;background-color:rgba(10,5,25,.75);margin-bottom:1.2rem}}
+.stExpander header{{font-family:'MedievalSharp','Orbitron',cursive;font-size:1.3em;color:{theme_config["text"]}}}
+.stExpander header:hover{{color:{theme_config["primary"]};text-shadow:0 0 5px {theme_config["primary"]}}}
+.stExpander svg{{fill:{theme_config["primary"]};transform:scale(1.1)}}
+.stTabs [data-baseweb=tab-list]{{gap:28px;border-bottom:2.5px solid {theme_config["primary"]}}}
+.stTabs [data-baseweb=tab]{{height:55px;white-space:pre-wrap;background-color:transparent;font-family:'MedievalSharp','Orbitron',cursive;font-size:1.2em;color:{theme_config["text"]};padding-bottom:12px;transition:color .3s,background-color .3s}}
+.stTabs [data-baseweb=tab]:hover{{background-color:rgba({primary_rgb_css},.15);color:{theme_config["primary"]}}}
+.stTabs [aria-selected=true]{{color:{theme_config["primary"]};font-weight:700;text-shadow:0 0 7px {theme_config["primary"]};border-bottom:4px solid {theme_config["primary"]}}}
+.stApp>header{{z-index:-3!important;background-color:transparent!important}}
+.futuristic-text{{font-family:'Orbitron',sans-serif;letter-spacing:1px}}
+.tc{{text-align:center}} .fs11{{font-size:1.1em}} .fs12{{font-size:1.2em}} .fs105{{font-size:1.05em}} .i{{font-style:italic}}
+.ad{{animation:fadeInUp .9s forwards ease-out;opacity:0}} .mt15{{margin-top:15px}} .mt20{{margin-top:20px}}
+.mt25{{margin-top:25px}} .gap10{{gap:10px}} .flex-around-wrap{{display:flex;justify-content:space-around;flex-wrap:wrap}}
+.sum-item{{text-align:center;padding:10px;background:rgba({primary_rgb_css},.1);border-radius:8px}}
+.sum-title{{color:{theme_config["text"]};font-size:.9em;margin-bottom:5px}}
+.sum-value{{font-size:1.4rem;color:{theme_config["primary"]}}}
+.snerr{{border-color:#ff4444!important}}
+.curriculum-card{{height:320px;display:flex;flex-direction:column;justify-content:space-between}}
+.fs15{{font-size:1.5em}} .fs09{{font-size:.9em}} .fs08{{font-size:.8em}}
+.artifact-card{{height:380px;display:flex;flex-direction:column;justify-content:space-between}}
+.artifact-img{{border-radius:10px;margin-bottom:10px;border:1px solid {theme_config["secondary"]};box-shadow:0 0 8px {theme_config["secondary"]}}}
+.no-data-img{{width:150px;margin-top:15px;border-radius:10px;opacity:.7}}
+.placeholder-gif{{width:200px;margin-top:20px;border-radius:10px;opacity:.8}}
+</style>
+"""
+st.markdown(base_css_rules, unsafe_allow_html=True)
 
-# Magical wand unicode
-WAND = "🪄"
+video_url_from_theme = theme_config.get("background_video", DEFAULT_HOGWARTS_VIDEO_URL)
+is_video_placeholder = "YOUR_" in video_url_from_theme or video_url_from_theme == DEFAULT_HOGWARTS_VIDEO_URL
 
-# Sidebar page navigation & data source options
-st.sidebar.title("Harry Potter Financial Mystics")
-st.sidebar.markdown("### Navigate the pages")
-page = st.sidebar.radio("", ["Welcome", "Data Exploration", "ML Models", "Stock Market Live Dashboard"])
+if video_url_from_theme and not is_video_placeholder:
+    video_html_content = f'''<video autoplay muted loop id="video-background"><source src="{video_url_from_theme}" type="video/mp4"></video>'''
+    st.markdown(video_html_content, unsafe_allow_html=True)
 
-if "df" not in st.session_state:
-    st.session_state.df = None
-if "ticker_data" not in st.session_state:
-    st.session_state.ticker_data = None
+WAND = "🪄"; WIZARD_HAT_ICON = "🧙"; CRYSTAL_BALL = "🔮"; OWL = "🦉"; BROOM = "🧹"
+POTION = "⚗️"; SPELL_BOOK = "📖"; STARS = "✨"; LIGHTNING = "⚡"; ROCKET = "🚀"
+GEAR = "⚙️"; ATOM = "⚛️"
+
+st.sidebar.markdown(f"### {SPELL_BOOK} Celestial Navigation")
+page_options = ["Hogwarts Holo-Welcome", "Data Transmutation Chamber",
+                "Predictive Enchantment Matrix", "Quantum Market Observatory"]
+page_session_key = "selected_page_fm_v6" # New unique key
+
+if page_session_key not in st.session_state:
+    st.session_state[page_session_key] = page_options[0]
+
+current_page_selection = st.sidebar.radio(
+    "Select Your Destination:", options=page_options,
+    index=page_options.index(st.session_state[page_session_key]),
+    key="sidebar_page_selector_v6", # New unique key
+    help="Navigate through the different chronomantic sections of the application."
+)
+if st.session_state[page_session_key] != current_page_selection:
+    st.session_state[page_session_key] = current_page_selection
+    st.experimental_rerun()
+
+page = st.session_state[page_session_key]
+
+if "df" not in st.session_state: st.session_state.df = None
+if "ticker_data" not in st.session_state: st.session_state.ticker_data = None
+if "spell_cast" not in st.session_state: st.session_state.spell_cast = False
+if "user_name" not in st.session_state: st.session_state.user_name = ""
+if "sorting_complete" not in st.session_state: st.session_state.sorting_complete = False
+
+def magical_loading(message="Engaging Warp Drive..."):
+    loading_html = f"""<div class="loading-magic-container"><div class="loading-magic"></div><div class="loading-magic-text">{message}</div></div>"""
+    spinner_placeholder = st.empty(); spinner_placeholder.markdown(loading_html, unsafe_allow_html=True)
+    time.sleep(2.5); spinner_placeholder.empty()
 
 def load_data_from_upload():
-    uploaded_file = st.sidebar.file_uploader("Upload your financial dataset (CSV)", type=["csv"])
+    st.markdown(f"### {SPELL_BOOK} Upload Ancient Data Scrolls (CSV)")
+    uploaded_file = st.file_uploader("Upload financial dataset (CSV)", type=["csv"], key="csv_up_expl_p4", help="...") # Unique key
     if uploaded_file:
         try:
-            data = pd.read_csv(uploaded_file)
-            st.session_state.df = data
-            st.sidebar.success("Dataset loaded successfully!")
-        except Exception as e:
-            st.sidebar.error(f"Failed to load dataset: {e}")
+            magical_loading("Decrypting data streams..."); data = pd.read_csv(uploaded_file); st.session_state.df = data
+            st.success(f"{STARS} Scrolls decrypted! {STARS}")
+            st.markdown("""<div class="spell-note ad"><p class="futuristic-text">Data stream decoded. Matrix ready.</p></div>""", unsafe_allow_html=True)
+        except Exception as e: st.error(f"Decryption failed: {e}"); st.markdown(f"""<div class="spell-note ad snerr"><p class="futuristic-text">Error: Stream corrupted. Verify format.</p></div>""", unsafe_allow_html=True)
 
 def load_data_from_stock():
-    ticker = st.sidebar.text_input("Enter Stock Ticker (e.g. AAPL)", value="AAPL", key="ticker")
-    start_date = st.sidebar.date_input("Start Date", pd.to_datetime("2023-01-01"), key="start_date")
-    end_date = st.sidebar.date_input("End Date", pd.to_datetime("today"), key="end_date")
-    if st.sidebar.button("Fetch Data"):
+    st.markdown(f"### {CRYSTAL_BALL} Summon Quantum Market Signatures (Stocks)")
+    tc,sc,ec = st.columns(3)
+    with tc: ticker = st.text_input("Quantum Signature (e.g., MSFT)", value="GOOG", key="tk_stk_p4", help="...") # Unique key
+    with sc: start_date = st.date_input("Initial Chrono-Marker", pd.to_datetime("2023-01-01"), key="sd_stk_p4", help="...") # Unique key
+    with ec: end_date = st.date_input("Final Chrono-Marker", pd.to_datetime("today"), key="ed_stk_p4", help="...") # Unique key
+    if st.button(f"{ATOM} Summon Signatures", key="sum_stk_p4"): # Unique key
+        if not ticker: st.warning("Enter Quantum Signature."); return
         try:
-            data = yf.download(ticker, start=start_date, end=end_date)
-            if data.empty:
-                st.sidebar.error("No data found for the provided ticker and date range.")
-                st.session_state.ticker_data = None
+            magical_loading(f"Calibrating for {ticker}..."); data = yf.download(ticker,start_date,end_date)
+            if data.empty: st.error(f"No sigs for '{ticker}'."); st.session_state.ticker_data=None; st.markdown(f"""<div class="spell-note ad snerr"><p class="futuristic-text">No signal. Try diff sig/params.</p></div>""", unsafe_allow_html=True)
             else:
-                data.reset_index(inplace=True)
-                st.session_state.ticker_data = data
-                st.sidebar.success(f"Data for {ticker} loaded successfully!")
-        except Exception as e:
-            st.sidebar.error(f"Failed to fetch stock data: {e}")
+                data.reset_index(inplace=True); st.session_state.ticker_data=data; st.success(f"{ROCKET} Sigs for {ticker} acquired! {ROCKET}")
+                op,cp,hp,lp = data['Open'].iloc[0],data['Close'].iloc[-1],data['High'].max(),data['Low'].min()
+                pc = ((cp-op)/op)*100 if op!=0 else 0; cc = theme_config["primary"] if pc > 0 else "#F44336"
+                summary_html = f"""<div class="holodeck-container ad mt20"><h3 class="futuristic-text tc mb15" style="color:{theme_config['secondary']};">{ticker} Projection Summary {OWL}</h3><div class="flex-around-wrap gap10"><div class="sum-item"><h4 class="futuristic-text sum-title">Initiation</h4><p class="sum-value">${op:.2f}</p></div><div class="sum-item"><h4 class="futuristic-text sum-title">Termination</h4><p class="sum-value">${cp:.2f}</p></div><div class="sum-item"><h4 class="futuristic-text sum-title">Zenith</h4><p class="sum-value">${hp:.2f}</p></div><div class="sum-item"><h4 class="futuristic-text sum-title">Nadir</h4><p class="sum-value">${lp:.2f}</p></div><div class="sum-item"><h4 class="futuristic-text sum-title">Delta</h4><p class="sum-value" style="color:{cc};font-weight:bold;">{pc:.2f}%</p></div></div></div>"""
+                st.markdown(summary_html, unsafe_allow_html=True)
+        except Exception as e: st.error(f"Entanglement fail: {e}"); st.markdown(f"""<div class="spell-note ad snerr"><p class="futuristic-text">Analysis spell fail. Verify sig/net.</p></div>""", unsafe_allow_html=True)
 
 def reset_data():
-    st.session_state.df = None
-    st.session_state.ticker_data = None
+    if st.button(f"{WAND} Evanesco (Purge Data)", key="reset_dat_p4"): # Unique key
+        magical_loading("Purging data streams..."); st.session_state.df=None; st.session_state.ticker_data=None
+        st.success("Streams purged!"); time.sleep(1); st.experimental_rerun()
 
 def welcome_page():
-    st.markdown(
-        """
-        <style>
-        .welcome-screen {
-            background-image: url('https://wallpapercave.com/wp/wp2182819.jpg'); /* Hogwarts wallpaper */
-            background-size: cover;
-            background-position: center;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            color: white;
-            text-align: center;
-        }
-        .welcome-screen h1 {
-            font-size: 4em;
-            margin-bottom: 20px;
-            text-shadow: 2px 2px 4px #000000;
-        }
-        .welcome-screen p {
-            font-size: 1.5em;
-            max-width: 600px;
-            margin-bottom: 30px;
-        }
-        .welcome-screen button {
-            background-color: #4CAF50;
-            border: none;
-            color: white;
-            padding: 15px 32px;
-            text-align: center;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 16px;
-            margin: 4px 2px;
-            cursor: pointer;
-            border-radius: 8px;
-        }
-        </style>
-        <div class="welcome-screen">
-            <h1>Welcome to the Futuristic Wizardry World</h1>
-            <p>Step into a realm where magic meets technology. Explore the wonders of our futuristic wizardry world and unleash your potential.</p>
-            <button onclick="window.location.href='data_exploration'">Enter the World</button>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    if st.button("Enter the World"):
-        st.session_state.page = "Data Exploration"
-        st.experimental_rerun()
+    cm, ca = st.columns([2,1])
+    with cm:
+        st.markdown(f"""<div class="ad"><h1 style="font-size:3rem;margin-bottom:.3rem;"><span class="wizard-hat">{WIZARD_HAT_ICON}</span>Welcome <br><span class="sparkling-text futuristic-text">Hogwarts Financial Mystics</span><span class="wand-icon">{ROCKET}</span></h1><p class="fs12 futuristic-text" style="color:{theme_config['secondary']};font-family:'Orbitron','MedievalSharp',cursive;">Initializing Holo-Interface... Ancient Wizardry Meets Quantum Dynamics!</p></div>""", unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
+        cols_btn_center = st.columns([.5,2,.5]); 
+        with cols_btn_center[1]:
+            if st.button(f"{ROCKET} Dive into Financial Cosmos! {ATOM}", key="dive_welcome_p4", use_container_width=True): # Unique key
+                if not st.session_state.get("sorting_complete",False) and not st.session_state.get("user_name",""): st.toast("Oracle awaits calibration!",icon="🎩")
+                elif not st.session_state.get("sorting_complete",False): st.toast("Oracle assessment pending!",icon="🎩")
+                else: st.session_state[page_session_key] = "Data Transmutation Chamber"; st.experimental_rerun()
+        if not st.session_state.get("sorting_complete", False):
+            st.markdown("""<div class="spell-note ad ad-delay-1 mt25"><p class="fs11 futuristic-text">Holo-Scan... New Chronomancer! Oracle must assess aptitude.</p></div>""", unsafe_allow_html=True)
+            un_val = st.session_state.get("user_name","")
+            un_input_val = st.text_input("Chronomancer designation:",key="wiz_name_welcome_p4",value=un_val,help="...") # Unique key
+            if un_input_val: st.session_state.user_name = un_input_val
+            if st.session_state.user_name:
+                with st.expander(f"🌌 Oracle Calibration for {st.session_state.user_name}...", expanded=True):
+                    st.markdown(f"""<p class="i futuristic-text" style="color:{theme_config['text']};">"Analyzing: {st.session_state.user_name}. Determining core frequency..."</p>""", unsafe_allow_html=True)
+                    fq_val = st.selectbox("Chrono-crystal protocol:",["Boldly invest (Gryffindor)","Strategically multiply (Slytherin)","Sustainably grow (Hufflepuff)","Research application (Ravenclaw)"],index=None,key="sort_q_welcome_p4",placeholder="Select prime directive...",help="...") # Unique key
+                    if st.button("Activate Oracle!",key="act_oracle_welcome_p4"): # Unique key
+                        if fq_val:
+                            magical_loading("Oracle Calibrating..."); sh_val = "Gryffindor" if "(G)" in fq_val else "Slytherin" if "(S)" in fq_val else "Hufflepuff" if "(H)" in fq_val else "Ravenclaw"
+                            st.balloons();st.success(f"**Oracle Confirmed: {sh_val.upper()} ALIGNMENT!**")
+                            st.markdown(f"""<div class="spell-note ad futuristic-text"><p>Calibrated, {st.session_state.user_name}! Matrix resonates with {sh_val}. Attune Holo-Interface or use universal field.</p></div>""", unsafe_allow_html=True)
+                            st.session_state.sorting_complete=True
+                        else:st.warning("Oracle needs input!")
+        else: st.markdown(f"""<div class="spell-note ad ad-delay-1 mt25"><p class="fs12 futuristic-text">Welcome back, Chronomancer <strong style="color:{theme_config['primary']};">{st.session_state.user_name}</strong>! Ready for more temporal streams? {ROCKET}</p></div>""", unsafe_allow_html=True)
+        st.markdown("""<div class="ad ad-delay-2 futuristic-text mt20"><p class="fs105">Interface with enchanted algorithms, quantum models, data-driven chronomancy. Arcane echoes harmonize with tech symphonies for temporal keys to prosperity.</p></div>""", unsafe_allow_html=True)
+    with ca:
+        st.markdown("<br><br><br>",unsafe_allow_html=True);logo_d=theme_config.get("house_logo",HOGWARTS_CREST_URL);cap_t=f"Holo-Projection: {selected_house} Matrix" if selected_house!="None" else "Central Hogwarts Quantum Core"
+        st.markdown(f"""<div class="hologram ad ad-delay-2 tc"><img src="{logo_d}" width="80%" class="floating-avatar" alt="{cap_t}"/></div><p class="tc i mt10 futuristic-text" style="color:{theme_config['secondary']};font-family:'Orbitron','MedievalSharp',cursive;">{cap_t}</p>""",unsafe_allow_html=True)
+    st.markdown("<hr class='ad ad-delay-3'>",unsafe_allow_html=True)
+    cfeat,cfort = st.columns(2)
+    with cfeat:
+        with st.expander(f"{ATOM} Advanced Holo-Features {ATOM}",expanded=False):st.markdown(f"""<div class="ad futuristic-text"><ul style="list-style-type:none;padding-left:0;"><li><span class="fs13">{SPELL_BOOK}</span> Data Scroll Decryption</li><li><span class="fs13">{GEAR}</span> Predictive AI</li><li><span class="fs13">{CRYSTAL_BALL}</span> Holo-Visualizations</li><li><span class="fs13">{ROCKET}</span> Personalized Field</li></ul></div>""",unsafe_allow_html=True)
+        with st.expander(f"{OWL} Hogwarts Frequencies & Protocols {OWL}",expanded=False):st.markdown(f"""<div class="futuristic-text"><h4>Gryffindor🦁</h4><p>Bold investors.</p><h4>Slytherin🐍</h4><p>Ambitious.</p><h4>Hufflepuff🦡</h4><p>Sustainable.</p><h4>Ravenclaw🦅</h4><p>Analytical.</p></div>""",unsafe_allow_html=True)
+    with cfort:
+        st.markdown(f"""<div class="ad ad-delay-3"><h3 class="tc futuristic-text">Oracle Matrix Interface {CRYSTAL_BALL}</h3></div>""",unsafe_allow_html=True)
+        with st.form("fortune_form_welcome_p4"):fi_val=st.text_input("Binary query to Oracle:",key="fortune_q_welcome_p4",placeholder="Investments achieve singularity?",help="...");csb_val=st.form_submit_button(f"{ATOM} Query Oracle") # Unique keys
+        if csb_val:
+            if fi_val:st.session_state.spell_cast=True;magical_loading("Oracle Processing...");fl=[{"r":"Affirmative.","c":"#4CAF50"},{"r":"Negative.","c":"#F44336"},{"r":"Indeterminate.","c":"#FF9800"},{"r":"Probable.","c":theme_config['primary']},{"r":"Uncertain.","c":theme_config['secondary']},{"r":"Deferred.","c":"#FF5722"}];cf_val=random.choice(fl);st.markdown(f"""<div class="spell-note ad futuristic-text tc" style="border-color:{cf_val['c']};"><h4 style="color:{cf_val['c']};">Oracle Response:</h4><p class="fs115" style="color:{theme_config['text']};">{cf_val['r']}</p><p class="i fs09" style="color:{theme_config['text']}b3;">*Disclaimer: Probabilistic.*</p></div>""",unsafe_allow_html=True)
+            else:st.warning("Oracle needs query!")
+    st.markdown("<hr class='ad'>",unsafe_allow_html=True)
+    st.markdown("""<div class="ad"><h2 class="tc futuristic-text">Chronomancer Training Protocol {SPELL_BOOK}</h2><p class="tc fs105 futuristic-text">Master temporal financial dynamics:</p></div>""",unsafe_allow_html=True)
+    cols_c=st.columns(4)
+    cs_l=[
+        {"t":"Data Influx","i":POTION,"d":"Interface CSVs/tickers."},
+        {"t":"Holo-Charting","i":CRYSTAL_BALL,"d":"Weave visual algorithms."},
+        {"t":"Predictive AI","i":GEAR,"d":"Deploy ML."},
+        {"t":"Quantum Observatory","i":ATOM,"d":"Interpret real-time."}
+    ]
+    for i,s_val in enumerate(cs_l):
+        with cols_c[i]: # Corrected indentation
+            st.markdown(f"""<div class="spell-note ad ad-delay-{i+1} futuristic-text curriculum-card"><div><h4 class="tc" style="color:{theme_config['primary']};"><span class="fs15">{s_val['i']}</span> {s_val['t']}</h4><p class="fs09">{s_val['d']}</p></div><p class="tc i fs08" style="color:{theme_config['secondary']};">Integrate protocol...</p></div>""",unsafe_allow_html=True)
+    st.markdown("<hr class='ad'>",unsafe_allow_html=True)
+    st.markdown("""<div class="ad"><h2 class="tc futuristic-text">Arsenal of Chronomantic Artifacts {LIGHTNING}</h2></div>""",unsafe_allow_html=True)
+    cols_g=st.columns(3)
+    art_l=[
+        {"n":"Temporal Ledger","img":ARTIFACT_GIF_1_URL,"d":"Reveals historical waves."},
+        {"n":"Quantum Abacus","img":ARTIFACT_GIF_2_URL,"d":"Transmutes data streams."},
+        {"n":"Oracle Holo-Projector","img":ARTIFACT_GIF_3_URL,"d":"Simulates market futures."}
+    ]
+    for i,art_val in enumerate(art_l):
+        with cols_g[i]: # Corrected indentation
+            st.markdown(f"""<div class="holodeck-container ad ad-delay-{i+1} futuristic-text artifact-card tc"><div><img src="{art_val['img']}" width="90%" class="artifact-img" alt="{art_val['n']}"/><h4 style="color:{theme_config['primary']};">{art_val['n']}</h4><p class="fs09">{art_val['d']}</p></div></div>""",unsafe_allow_html=True)
 
 def data_exploration():
-    st.title(f"Data Exploration {WAND}")
-    data_source_option = st.selectbox("Choose Data Source", ["Upload CSV Dataset", "Fetch Stock Data from Yahoo Finance"])
-
-    if data_source_option == "Upload CSV Dataset":
-        load_data_from_upload()
-    else:
-        load_data_from_stock()
-
-    if st.button("Reset Data"):
-        reset_data()
-        st.experimental_rerun()
-
-    df = st.session_state.df
-    ticker_data = st.session_state.ticker_data
-
+    st.markdown(f"""<div class="ad"><h1 class="futuristic-text tc">Data Transmutation Chamber {POTION}</h1><p class="futuristic-text tc fs11">Transmute raw data. Choose influx method.</p></div><hr class="ad">""", unsafe_allow_html=True)
+    t1,t2=st.tabs([f"{SPELL_BOOK} CSV Scrolls",f"{ATOM} Stock Signatures"]);with t1:load_data_from_upload();with t2:load_data_from_stock()
+    st.markdown("<hr class='ad'>",unsafe_allow_html=True);reset_data()
+    df,td=st.session_state.get('df'),st.session_state.get('ticker_data')
     if df is not None:
-        st.subheader("Uploaded Dataset Preview")
-        st.dataframe(df.head(10))
+        st.markdown(f"""<h2 class="futuristic-text tc ad">Decrypted Glyphs</h2>""",unsafe_allow_html=True);st.dataframe(df.head(5))
+        st.markdown(f"""<h3 class="futuristic-text tc ad">Quantum Insights</h3>""",unsafe_allow_html=True);cs,cst=st.columns(2)
+        with cs:st.markdown(f"""<div class="spell-note ad futuristic-text"><h4>Stats Resonance</h4></div>""",unsafe_allow_html=True);st.dataframe(df.describe().T.head(3))
+        with cst:st.markdown(f"""<div class="spell-note ad futuristic-text"><h4>Data Weave</h4></div>""",unsafe_allow_html=True);st.dataframe(pd.DataFrame({'F':df.columns,'T':df.dtypes.astype(str)}).head(3))
+        st.markdown(f"""<h3 class="futuristic-text tc ad" id="chart-df">Holo-Viz</h3>""",unsafe_allow_html=True);num_c,cat_c=df.select_dtypes(np.number).columns.tolist(),df.select_dtypes('object').columns.tolist()
+        if num_c:
+            viz_s=st.selectbox("Viz Algo:",["Density","Correlation","Harmonics"],index=None,key="viz_df_p5",placeholder="Select..."); # Unique key
+            if viz_s == "Density" and num_c: 
+                sel_cols = st.multiselect("Select streams for Density Map:", num_c, default=num_c[:min(1,len(num_c))], key="hist_ms_p5") # Unique key
+                # --- Full Histogram Plotting Logic ---
+                if sel_cols:
+                    for col_name in sel_cols:
+                        fig, ax = plt.subplots(figsize=(10, 6))
+                        sns.histplot(df[col_name].dropna(), kde=True, color=theme_config["primary"], ax=ax, bins=30, line_kws={'linewidth': 2.5, 'color': theme_config["secondary"]})
+                        ax.set_title(f"Density Map of {col_name}", color=theme_config["text"], fontsize=16, fontfamily='Orbitron, Cinzel')
+                        ax.set_xlabel(col_name, color=theme_config["text"], fontfamily='Orbitron, Cinzel')
+                        ax.set_ylabel("Datapoint Frequency", color=theme_config["text"], fontfamily='Orbitron, Cinzel')
+                        ax.set_facecolor('rgba(5,2,15,0.85)'); fig.patch.set_facecolor('rgba(5,2,15,0.85)')
+                        ax.tick_params(axis='x', colors=theme_config["text"]); ax.tick_params(axis='y', colors=theme_config["text"])
+                        ax.spines['bottom'].set_color(theme_config["primary"]); ax.spines['left'].set_color(theme_config["primary"])
+                        ax.spines['top'].set_color('rgba(5,2,15,0.85)'); ax.spines['right'].set_color('rgba(5,2,15,0.85)')
+                        plt.grid(axis='y', linestyle=':', alpha=0.4, color=theme_config["secondary"]); st.pyplot(fig)
+                        st.markdown(f"""<div class="spell-note ad futuristic-text"><p><strong>Quantum Measures for {col_name}:</strong></p><ul><li>Mean: {df[col_name].mean():.2f}</li><li>Median: {df[col_name].median():.2f}</li><li>StdDev: {df[col_name].std():.2f}</li><li>Range: {df[col_name].min():.2f} to {df[col_name].max():.2f}</li></ul></div>""", unsafe_allow_html=True)
+            elif viz_s == "Correlation" and len(num_c)>1:
+                # --- Full Correlation Heatmap Logic ---
+                fig, ax = plt.subplots(figsize=(12, 10)); corr_matrix_df = df[num_c].corr(); mask = np.triu(np.ones_like(corr_matrix_df, dtype=bool))
+                cmap = sns.diverging_palette(260,20,s=80,l=45,n=10,center="dark",as_cmap=True)
+                sns.heatmap(corr_matrix_df,mask=mask,cmap=cmap,vmax=1,vmin=-1,center=0,annot=True,fmt=".2f",square=True,linewidths=.7,cbar_kws={"shrink":.85},ax=ax,annot_kws={"color":theme_config['text'],"fontfamily":"Orbitron, Cinzel"})
+                ax.set_title("Correlation Nebula",color=theme_config["text"],fontsize=18,fontfamily='Orbitron, Cinzel')
+                ax.set_facecolor('rgba(5,2,15,0.85)'); fig.patch.set_facecolor('rgba(5,2,15,0.85)')
+                ax.tick_params(axis='x',colors=theme_config["text"],rotation=45); ax.tick_params(axis='y',colors=theme_config["text"])
+                plt.xticks(fontfamily='Orbitron, Cinzel'); plt.yticks(fontfamily='Orbitron, Cinzel'); st.pyplot(fig)
+            elif viz_s == "Harmonics" and cat_c and num_c: 
+                sel_cat = st.selectbox("Select Category Stream:", cat_c, key="bar_cat_p5") # Unique key
+                sel_num = st.selectbox("Select Value Stream:", num_c, key="bar_num_p5") # Unique key
+                # --- Full Bar Chart Logic ---
+                if sel_cat and sel_num:
+                    fig, ax = plt.subplots(figsize=(12, 7))
+                    sns.barplot(x=sel_cat,y=sel_num,data=df,ax=ax,palette=[theme_config["primary"],theme_config["secondary"],'#A076F9','#FDA7DF','#76D7C4'],estimator=np.mean,errorbar=None)
+                    ax.set_title(f"Mean '{sel_num}' by '{sel_cat}' Harmonics",color=theme_config["text"],fontsize=16,fontfamily='Orbitron, Cinzel')
+                    ax.set_xlabel(sel_cat,color=theme_config["text"],fontfamily='Orbitron, Cinzel'); ax.set_ylabel(f"Mean {sel_num}",color=theme_config["text"],fontfamily='Orbitron, Cinzel')
+                    ax.set_facecolor('rgba(5,2,15,0.85)'); fig.patch.set_facecolor('rgba(5,2,15,0.85)')
+                    ax.tick_params(axis='x',colors=theme_config["text"],rotation=45,ha="right"); ax.tick_params(axis='y',colors=theme_config["text"])
+                    plt.grid(axis='y',linestyle=':',alpha=0.4,color=theme_config["secondary"]); st.pyplot(fig)
+        else:st.info("No numeric data for Holo-Viz.")
+    elif td is not None:
+        st.markdown(f"""<h2 class="futuristic-text tc ad">Market Readings</h2>""",unsafe_allow_html=True);st.dataframe(td.head(5))
+        st.markdown(f"""<h3 class="futuristic-text tc ad">Quantum Matrix Holo-Visions {ATOM}</h3>""",unsafe_allow_html=True);t1,t2,t3=st.tabs(["📈Price","📊Volume","🕯️Candles"]);td['MA20']=td['Close'].rolling(20).mean();td['MA50']=td['Close'].rolling(50).mean()
+        # --- Full Plotly Chart Logic for Ticker Data ---
+        with t1: # Price Journey
+            fig_price=go.Figure();fig_price.add_trace(go.Scatter(x=td['Date'],y=td['Close'],mode='lines',name='Closing Price Vector',line=dict(color=theme_config["primary"],width=2.5,shape='spline'),hovertemplate='<b>Date</b>: %{x|%Y-%m-%d}<br><b>Price</b>: $%{y:.2f}<extra></extra>'))
+            if len(td)>=20:fig_price.add_trace(go.Scatter(x=td['Date'],y=td['MA20'],mode='lines',name='20-Cycle Trend',line=dict(color=theme_config["secondary"],width=1.5,dash='dash'),hovertemplate='<b>MA20</b>: $%{y:.2f}<extra></extra>'))
+            if len(td)>=50:fig_price.add_trace(go.Scatter(x=td['Date'],y=td['MA50'],mode='lines',name='50-Cycle Resonance',line=dict(color='rgba(150,107,45,0.7)',width=1.5,dash='dot'),hovertemplate='<b>MA50</b>: $%{y:.2f}<extra></extra>'))
+            fig_price.update_layout(title=dict(text=f"{td.columns[1] if len(td.columns)>1 else 'Stock'} Price Vector",x=0.5,font=dict(family="Orbitron,Cinzel",size=20,color=theme_config['primary'])),xaxis_title_text="Chrono-Marker",yaxis_title_text="Value (Credits)",plot_bgcolor='rgba(0,0,0,0)',paper_bgcolor='rgba(0,0,0,0)',font_color=theme_config["text"],font_family="Orbitron,Cinzel",hovermode="x unified",legend=dict(bgcolor='rgba(5,2,15,0.75)',bordercolor=theme_config["primary"],font=dict(family="Orbitron,Cinzel")),xaxis=dict(gridcolor=f'rgba({secondary_rgb_css},0.25)',showgrid=True,type='date',rangeselector=dict(buttons=list([dict(count=1,label="1M",step="month",stepmode="backward"),dict(count=6,label="6M",step="month",stepmode="backward"),dict(count=1,label="YTD",step="year",stepmode="todate"),dict(count=1,label="1Y",step="year",stepmode="backward"),dict(step="all",label="ALL")])),rangeslider=dict(visible=True,bgcolor=f'rgba({primary_rgb_css},0.15)')),yaxis=dict(gridcolor=f'rgba({secondary_rgb_css},0.25)',showgrid=True));st.plotly_chart(fig_price,use_container_width=True)
+        with t2: # Volume
+            fig_volume=go.Figure();colors_v=[theme_config["primary"] if td['Close'][i]>=td['Open'][i] else '#E74C3C' for i in range(len(td))]
+            fig_volume.add_trace(go.Bar(x=td['Date'],y=td['Volume'],name='Transaction Volume',marker_color=colors_v,opacity=0.75,hovertemplate='<b>Date</b>: %{x|%Y-%m-%d}<br><b>Volume</b>: %{y:,}<extra></extra>'))
+            fig_volume.update_layout(title=dict(text="Volume Runes - Market Energy Flux",x=0.5,font=dict(family="Orbitron,Cinzel",size=20,color=theme_config['primary'])),xaxis_title_text="Chrono-Marker",yaxis_title_text="Volume Units",plot_bgcolor='rgba(0,0,0,0)',paper_bgcolor='rgba(0,0,0,0)',font_color=theme_config["text"],font_family="Orbitron,Cinzel",hovermode="x unified",legend=dict(bgcolor='rgba(5,2,15,0.75)',bordercolor=theme_config["primary"]),xaxis=dict(gridcolor=f'rgba({secondary_rgb_css},0.25)',type='date'),yaxis=dict(gridcolor=f'rgba({secondary_rgb_css},0.25)'),bargap=0.25);st.plotly_chart(fig_volume,use_container_width=True)
+        with t3: # Candlestick
+            fig_candle=go.Figure(data=[go.Candlestick(x=td['Date'],open=td['Open'],high=td['High'],low=td['Low'],close=td['Close'],increasing_line_color=theme_config['primary'],decreasing_line_color='#E74C3C',name="Price Vectors",hovertemplate='<b>Date</b>: %{x|%Y-%m-%d}<br>Open: $%{open:.2f}<br>High: $%{high:.2f}<br>Low: $%{low:.2f}<br>Close: $%{close:.2f}<extra></extra>')])
+            if len(td)>=20:fig_candle.add_trace(go.Scatter(x=td['Date'],y=td['MA20'],mode='lines',name='20-Cycle Trend',line=dict(color=theme_config["secondary"],width=1.5,dash='dash'),opacity=0.75))
+            if len(td)>=50:fig_candle.add_trace(go.Scatter(x=td['Date'],y=td['MA50'],mode='lines',name='50-Cycle Resonance',line=dict(color='rgba(150,107,45,0.75)',width=1.5,dash='dot'),opacity=0.75))
+            fig_candle.update_layout(title=dict(text="Candlestick Chronomancy - Daily Signatures",x=0.5,font=dict(family="Orbitron,Cinzel",size=20,color=theme_config['primary'])),xaxis_title_text="Chrono-Marker",yaxis_title_text="Value (Credits)",plot_bgcolor='rgba(0,0,0,0)',paper_bgcolor='rgba(0,0,0,0)',font_color=theme_config["text"],font_family="Orbitron,Cinzel",hovermode="x unified",legend=dict(bgcolor='rgba(5,2,15,0.75)',bordercolor=theme_config["primary"]),xaxis_rangeslider_visible=False,xaxis=dict(gridcolor=f'rgba({secondary_rgb_css},0.25)',type='date'),yaxis=dict(gridcolor=f'rgba({secondary_rgb_css},0.25)'));st.plotly_chart(fig_candle,use_container_width=True)
+    elif not df and not td:st.markdown(f"""<div class="spell-note ad futuristic-text tc"><p class="fs12">{SPELL_BOOK} Chamber awaits! {ATOM}</p><img src="{NO_DATA_IMAGE_URL}" alt="Awaiting Data" class="no-data-img"></div>""",unsafe_allow_html=True)
 
-        st.markdown("### Summary Statistics")
-        st.write(df.describe())
+def machine_learning_spells():
+    st.markdown(f"""<div class="ad"><h1 class="futuristic-text tc">Predictive Matrix {GEAR}</h1></div><hr class="ad">""", unsafe_allow_html=True)
+    st.markdown(f"""<div class="spell-note ad futuristic-text tc"><h3 style="color:{theme_config['primary']};">Matrix Calibration {BROOM}</h3><p>Engineers calibrating algorithms.</p><img src="{CONSTRUCTION_GIF_URL}" alt="WIP" class="placeholder-gif"><p class="i mt15">Return when flux stable!</p></div>""", unsafe_allow_html=True)
 
-        st.markdown("### Data Columns")
-        st.write(df.columns.tolist())
+def market_divination_observatory():
+    st.markdown(f"""<div class="ad"><h1 class="futuristic-text tc">Quantum Observatory {OWL}</h1></div><hr class="ad">""", unsafe_allow_html=True)
+    st.markdown(f"""<div class="spell-note ad futuristic-text tc"><h3 style="color:{theme_config['primary']};">Telescope Attunement {LIGHTNING}</h3><p>Astro-Quantomancer aligning lenses.</p><img src="{OBSERVATORY_GIF_URL}" alt="WIP" class="placeholder-gif"><p class="i mt15">Return when resonances optimal!</p></div>""", unsafe_allow_html=True)
 
-        numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-        if numeric_cols:
-            st.markdown("### Histograms of Numeric Columns")
-            for col in numeric_cols:
-                fig, ax = plt.subplots()
-                sns.histplot(df[col].dropna(), kde=True, color=theme["primary"], ax=ax)
-                ax.set_facecolor('#2c1a4f')
-                ax.spines['bottom'].set_color(theme["primary"])
-                ax.spines['left'].set_color(theme["primary"])
-                ax.tick_params(axis='x', colors=theme["primary"])
-                ax.tick_params(axis='y', colors=theme["primary"])
-                ax.title.set_color(theme["primary"])
-                st.pyplot(fig)
-        else:
-            st.info("No numeric columns available for histogram plots.")
+if page == "Hogwarts Holo-Welcome": welcome_page()
+elif page == "Data Transmutation Chamber": data_exploration()
+elif page == "Predictive Enchantment Matrix": machine_learning_spells()
+elif page == "Quantum Market Observatory": market_divination_observatory()
 
-    elif ticker_data is not None:
-        st.subheader("Fetched Stock Data Preview")
-        st.dataframe(ticker_data.head(10))
-
-        st.markdown("### Closing Price Chart")
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=ticker_data['Date'], y=ticker_data['Close'], mode='lines+markers', name='Close Price', line=dict(color=theme["primary"])))
-        fig.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font_color=theme["primary"])
-        st.plotly_chart(fig, use_container_width=True)
-
-    else:
-        st.info("Load data using options above to begin exploration.")
-
-def ml_models():
-    st.title(f"Machine Learning Models {WAND}")
-
-    df = st.session_state.df
-    ticker_data = st.session_state.ticker_data
-
-    dataset_options = []
-    if df is not None:
-        dataset_options.append("Uploaded Dataset")
-    if ticker_data is not None:
-        dataset_options.append("Stock Data")
-    if not dataset_options:
-        st.info("Load data in the 'Data Exploration' page to run ML models.")
-        return
-
-    dataset_choice = st.selectbox("Select Dataset for Modeling", options=dataset_options)
-
-    data_df = df.copy() if dataset_choice == "Uploaded Dataset" else ticker_data.copy()
-    numeric_cols = data_df.select_dtypes(include=[np.number]).columns.tolist()
-    st.markdown(f"**Numeric columns detected:** {numeric_cols}")
-    if not numeric_cols:
-        st.warning("No numeric columns found in the dataset for modeling.")
-        return
-
-    model_choice = st.selectbox("Select Machine Learning Model", ["Linear Regression", "Logistic Regression", "K-Means Clustering"])
-
-    if model_choice == "Linear Regression":
-        st.markdown("Linear Regression predicts a numeric target from numeric features.")
-
-        target = st.selectbox("Select Target Variable (numeric)", options=numeric_cols)
-        features = st.multiselect("Select Feature Variables (numeric)", options=[col for col in numeric_cols if col != target])
-
-        if st.button("Run Linear Regression"):
-            if not features:
-                st.warning("Please select at least one feature.")
-                return
-            X = data_df[features].fillna(0)
-            y = data_df[target].fillna(0)
-
-            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
-
-            model = LinearRegression()
-            model.fit(X_train, y_train)
-            preds = model.predict(X_test)
-            mse = mean_squared_error(y_test, preds)
-
-            st.success(f"Mean Squared Error: {mse:.4f}")
-
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(x=y_test, y=preds, mode='markers', name='Predicted'))
-            fig.add_trace(go.Scatter(x=y_test, y=y_test, mode='lines', name='Ideal', line=dict(color='firebrick')))
-            fig.update_layout(title="Actual vs Predicted", xaxis_title="Actual", yaxis_title="Predicted",
-                              plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font_color=theme["primary"])
-            st.plotly_chart(fig, use_container_width=True)
-
-    elif model_choice == "Logistic Regression":
-        st.markdown("Logistic Regression predicts a binary target.")
-
-        binary_cols = [col for col in numeric_cols if data_df[col].dropna().nunique() == 2]
-        if not binary_cols:
-            st.warning("No binary numeric columns available for Logistic Regression target.")
-            return
-
-        target = st.selectbox("Select Binary Target Variable", options=binary_cols)
-        features = st.multiselect("Select Numeric Features", options=[c for c in numeric_cols if c != target])
-
-        if st.button("Run Logistic Regression"):
-            if not features:
-                st.warning("Please select at least one feature.")
-                return
-
-            X = data_df[features].fillna(0)
-            y = data_df[target].fillna(0)
-
-            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
-
-            model = LogisticRegression(max_iter=1000)
-            model.fit(X_train, y_train)
-            preds = model.predict(X_test)
-            acc = accuracy_score(y_test, preds)
-
-            st.success(f"Accuracy: {acc:.4f}")
-
-            cm = sns.heatmap(pd.crosstab(y_test, preds), annot=True, cmap="YlOrBr", fmt="d")
-            plt.title("Confusion Matrix")
-            plt.xlabel("Predicted")
-            plt.ylabel("Actual")
-            st.pyplot(plt.gcf())
-            plt.clf()
-
-    elif model_choice == "K-Means Clustering":
-        st.markdown("K-Means groups data into clusters.")
-
-        features = st.multiselect("Select Features", options=numeric_cols)
-        clusters = st.slider("Number of clusters (k)", 2, 10, 3)
-
-        if st.button("Run K-Means Clustering"):
-            if not features:
-                st.warning("Please select at least one feature.")
-                return
-
-            X = data_df[features].fillna(0)
-
-            kmeans = KMeans(n_clusters=clusters, random_state=42)
-            labels = kmeans.fit_predict(X)
-            data_df["Cluster"] = labels
-
-            st.write("Cluster assignments preview:")
-            st.dataframe(data_df[features + ["Cluster"]].head(20))
-
-            if len(features) >= 2:
-                fig = go.Figure()
-                for cluster_num in range(clusters):
-                    cluster_data = data_df[data_df["Cluster"] == cluster_num]
-                    fig.add_trace(go.Scatter(
-                        x=cluster_data[features[0]],
-                        y=cluster_data[features[1]],
-                        mode='markers',
-                        name=f'Cluster {cluster_num}',
-                        marker=dict(size=12)
-                    ))
-                fig.update_layout(title="K-Means Clusters",
-                                  xaxis_title=features[0],
-                                  yaxis_title=features[1],
-                                  plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font_color=theme["primary"])
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.info("Select at least two features for cluster visualization.")
-
-def stock_market_dashboard():
-    st.title(f"Stock Market Live Dashboard {WAND}")
-
-    ticker = st.text_input("Enter Stock Ticker to Track", value="AAPL", max_chars=10)
-    if st.button("Show Stock Data"):
-        try:
-            data = yf.download(ticker, period="1mo", interval="1d")
-            if data.empty:
-                st.error(f"No data found for ticker {ticker}")
-                return
-
-            data.reset_index(inplace=True)
-            st.subheader(f"Live Data for {ticker}")
-            st.dataframe(data.tail(10))
-
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(x=data["Date"], y=data["Close"], mode="lines+markers",
-                                     name="Close Price", line=dict(color=theme["primary"])))
-            fig.update_layout(title=f"{ticker} Close Prices - Last Month",
-                              xaxis_title="Date", yaxis_title="Price (USD)",
-                              plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', font_color=theme["primary"])
-            st.plotly_chart(fig, use_container_width=True)
-
-        except Exception as e:
-            st.error(f"Failed to retrieve stock data: {e}")
-
-# Main navigation
-if "page" not in st.session_state:
-    st.session_state.page = "Welcome"
-
-if st.session_state.page == "Welcome":
-    welcome_page()
-elif st.session_state.page == "Data Exploration":
-    data_exploration()
-elif st.session_state.page == "ML Models":
-    ml_models()
-elif st.session_state.page == "Stock Market Live Dashboard":
-    stock_market_dashboard()
-
-# Footer with animated magic button themed by house with neon border
-st.markdown("---")
-col1, col2, col3 = st.columns([1, 3, 1])
-with col2:
-    magic_button_code = f"""
-    <style>
-    .magic-btn {{
-        font-family: 'Creepster', cursive;
-        background: {theme["button_bg"]};
-        border: 4px solid transparent;
-        border-radius: 50px;
-        color: black;
-        font-size: 24px;
-        padding: 16px 60px;
-        cursor: pointer;
-        box-shadow:
-            0 0 20px {theme["primary"]},
-            inset 0 0 20px {theme["primary"]};
-        animation: neonBorderMove 4s ease-in-out infinite;
-        transition: transform 0.3s ease;
-        position: relative;
-        z-index: 1;
-    }}
-    .magic-btn:hover {{
-        box-shadow: 0 0 40px 10px {theme["primary"]};
-        transform: scale(1.2) rotate(-5deg);
-    }}
-    @keyframes neonBorderMove {{
-      0% {{
-        filter: drop-shadow(0 0 6px {theme["primary"]});
-        box-shadow:
-          0 0 10px {theme["primary"]},
-          inset 0 0 10px {theme["primary"]};
-        background-position: 0% 50%;
-      }}
-      50% {{
-        background-position: 100% 50%;
-        filter: drop-shadow(0 0 12px {theme["secondary"]});
-      }}
-      100% {{
-        filter: drop-shadow(0 0 6px {theme["primary"]});
-        background-position: 0% 50%;
-      }}
-    }}
-    </style>
-    <button class="magic-btn" onclick="alert('May your financial spells always succeed!')">✨ Cast Your Financial Spell ✨</button>
-    """
-    st.markdown(magic_button_code, unsafe_allow_html=True)
+st.markdown("<hr class='ad'>",unsafe_allow_html=True)
+st.markdown(f"""<p class="futuristic-text tc" style="font-family:'Orbitron','MedievalSharp',cursive;color:{theme_config['secondary']};font-size:.9em;">Engineered by Humble Chronomancer <span class="wand-icon">{ATOM}</span><br>May investments entangle with prosperity!</p>""",unsafe_allow_html=True)
