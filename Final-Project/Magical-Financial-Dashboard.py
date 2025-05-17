@@ -321,7 +321,6 @@ def welcome_page():
 
     if st.button("Enter the World"):
         st.session_state.page = "Data Exploration"
-        st.experimental_rerun()
 
 def data_exploration():
     st.title(f"Data Exploration {WAND}")
@@ -334,7 +333,6 @@ def data_exploration():
 
     if st.button("Reset Data"):
         reset_data()
-        st.experimental_rerun()
 
     df = st.session_state.df
     ticker_data = st.session_state.ticker_data
