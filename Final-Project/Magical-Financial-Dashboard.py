@@ -1102,7 +1102,7 @@ def welcome_page():
     with col_main:
         st.markdown(f"""
         <div class="animated-text">
-            <h1 style="font-size: 3rem; margin-bottom: 0.3rem;"> { /* Increased font size */ }
+            <h1 style="font-size: 3rem; margin-bottom: 0.3rem;"> 
                 <span class="wizard-hat">{WIZARD_HAT_ICON}</span>Welcome to the <br><span class="sparkling-text futuristic-text">Hogwarts Financial Mystics</span><span class="wand-icon">{ROCKET}</span>
             </h1>
             <p style="font-size: 1.2rem; color: {theme['secondary']}; font-family: 'Orbitron', 'MedievalSharp', cursive;" class="futuristic-text">
