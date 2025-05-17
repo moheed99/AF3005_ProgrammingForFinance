@@ -1310,6 +1310,7 @@ def welcome_page():
     </div>
     """, unsafe_allow_html=True)
 
+    # ... inside welcome_page function, "Arsenal of Chronomantic Artifacts" section
     cols_gallery = st.columns(3)
     artifacts = [
         {"name": "The Temporal Ledger Engine", "img": "https://i.imgur.com/uQKGWJZ.gif", "desc": "A self-calibrating quantum ledger, revealing historical financial waves and projecting cyclical market resonances across timelines."},
@@ -1320,7 +1321,7 @@ def welcome_page():
     for i, artifact in enumerate(artifacts):
         with cols_gallery[i]:
             st.markdown(f"""
-            <div class="holodeck-container animated-text animated-text-delay-{i+1} futuristic-text" style="text-align: center; height: 380px; display: flex; flex-direction: column; justify-content: space-between;"> {/* Increased height */}
+            <div class="holodeck-container animated-text animated-text-delay-{i+1} futuristic-text" style="text-align: center; height: 380px; display: flex; flex-direction: column; justify-content: space-between;">
                 <div>
                     <img src="{artifact['img']}" width="90%" style="border-radius: 10px; margin-bottom: 10px; border: 1px solid {theme['secondary']}; box-shadow: 0 0 8px {theme['secondary']};" alt="{artifact['name']}" />
                     <h4 style="color:{theme['primary']};">{artifact['name']}</h4>
@@ -1328,8 +1329,7 @@ def welcome_page():
                 </div>
             </div>
             """, unsafe_allow_html=True)
-
-
+	    
 # Function for data exploration page with enhanced magical elements
 def data_exploration():
     st.markdown(f"""
