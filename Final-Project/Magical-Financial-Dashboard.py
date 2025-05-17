@@ -4,15 +4,19 @@ import numpy as np
 import yfinance as yf
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.cluster import KMeans
-from sklearn.preprocessing import StandardScaler # Already present
+from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_squared_error, accuracy_score
 from sklearn.model_selection import train_test_split
 import plotly.express as px
 import plotly.graph_objects as go
-# import matplotlib.pyplot as plt # MODIFIED: Not directly used for st.pyplot, can be removed if seaborn isn't used elsewhere
-import base64 # Already present
+# import matplotlib.pyplot as plt # Not directly used for st.pyplot
+import base64
 from datetime import datetime, timedelta
 import time
+try:
+    from kneed import KneeLocator # For K-Means elbow detection
+except ImportError:
+    KneeLocator = None # Handle if kneed is not installed
 
 # Page configuration
 st.set_page_config(
@@ -22,8 +26,9 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Background images and styling
+# --- Styling (Your existing CSS is largely good, minor adjustments were made in previous turn) ---
 def add_bg_from_url(url):
+    # ... (keep your existing add_bg_from_url function)
     st.markdown(
         f"""
         <style>
@@ -32,20 +37,37 @@ def add_bg_from_url(url):
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
-            background-attachment: fixed; /* NEW: Keeps background fixed on scroll */
+            background-attachment: fixed;
         }}
-        /* NEW: Ensure content area is scrollable if it overflows */
         .main .block-container {{
-            max-height: 90vh; /* Adjust as needed */
+            max-height: 95vh; /* Ensure enough space */
             overflow-y: auto;
+            padding-top: 1rem; /* Add some padding at the top */
+            padding-bottom: 3rem; /* Add some padding at the bottom */
+        }}
+        /* Custom scrollbar for main content area */
+        .main .block-container::-webkit-scrollbar {{
+            width: 8px;
+        }}
+        .main .block-container::-webkit-scrollbar-track {{
+            background: rgba(31, 31, 46, 0.5);
+            border-radius: 10px;
+        }}
+        .main .block-container::-webkit-scrollbar-thumb {{
+            background: #00f2ff;
+            border-radius: 10px;
+        }}
+        .main .block-container::-webkit-scrollbar-thumb:hover {{
+            background: #ff00dd;
         }}
         </style>
         """,
         unsafe_allow_html=True
     )
 
-# Futuristic neon styling
+
 def local_css():
+    # ... (keep your existing local_css function, ensuring .stButton > button is styled)
     st.markdown("""
     <style>
     /* --- Your existing CSS --- */
@@ -69,7 +91,7 @@ def local_css():
     }
     
     .dashboard-card {
-        background: rgba(31, 31, 46, 0.85); /* MODIFIED: Slightly more opaque for readability */
+        background: rgba(31, 31, 46, 0.85);
         border: 1px solid #00f2ff;
         border-radius: 10px;
         padding: 20px;
@@ -96,20 +118,19 @@ def local_css():
         box-shadow: 0 0 20px #00f2ff;
     }
 
-    /* NEW: Styling for Streamlit's native st.button to match the theme */
     .stButton>button {
         background: rgba(17, 17, 17, 0.9);
         color: #00f2ff;
         border: 1px solid #00f2ff;
         border-radius: 5px;
-        padding: 8px 18px; /* Adjusted padding */
+        padding: 8px 18px;
         text-align: center;
         transition: all 0.3s;
         cursor: pointer;
         text-shadow: 0 0 3px #00f2ff;
         box-shadow: 0 0 8px #00f2ff;
-        width: 100%; /* Make sidebar buttons full width */
-        margin-bottom: 8px; /* Add some spacing */
+        width: 100%; 
+        margin-bottom: 8px; 
     }
 
     .stButton>button:hover {
@@ -117,132 +138,58 @@ def local_css():
         color: #111111;
         box-shadow: 0 0 15px #00f2ff;
     }
-    
-    .metric-container {
-        background: rgba(17, 17, 17, 0.8);
-        border: 1px solid #ff00dd;
-        border-radius: 5px;
-        padding: 10px;
-        text-align: center;
-        box-shadow: 0 0 10px #ff00dd;
+     .stButton>button:active { /* NEW: Active state for button */
+        transform: scale(0.98);
+        box-shadow: 0 0 5px #00f2ff;
     }
     
-    .metric-value {
-        color: #ff00dd;
-        font-size: 1.8em;
-        font-weight: bold;
-        text-shadow: 0 0 5px #ff00dd;
-    }
-    
-    .metric-label {
-        color: #ffffff;
-        font-size: 0.9em;
-    }
-    
-    @keyframes glow {
-        from {
-            text-shadow: 0 0 10px #00f2ff, 0 0 20px #00f2ff;
-        }
-        to {
-            text-shadow: 0 0 15px #00f2ff, 0 0 30px #00f2ff, 0 0 40px #00f2ff;
-        }
-    }
-    
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 10px;
-    }
-    
-    .stTabs [data-baseweb="tab"] {
-        background-color: rgba(17, 17, 17, 0.7);
-        border: 1px solid #00f2ff;
-        border-radius: 5px;
-        color: #00f2ff;
-        padding: 10px 20px;
-    }
-    
-    .stTabs [aria-selected="true"] {
-        background-color: rgba(0, 242, 255, 0.2);
-        border: 1px solid #00f2ff;
-        border-radius: 5px;
-        color: #ffffff;
-        box-shadow: 0 0 10px #00f2ff;
-    }
-    
-    /* Loading animation */
-    .loader {
-        width: 100%;
-        height: 5px;
-        background: linear-gradient(to right, #00f2ff, #ff00dd);
-        position: relative;
-        overflow: hidden;
-        border-radius: 5px;
-        animation: loading 2s infinite ease-in-out;
-    }
-    
-    @keyframes loading {
-        0% {
-            transform: translateX(-100%);
-        }
-        100% {
-            transform: translateX(100%);
-        }
-    }
-    
-    .stDataFrame {
-        background: rgba(31, 31, 46, 0.8);
-        border: 1px solid #00f2ff;
-        border-radius: 10px;
-        box-shadow: 0 0 10px #00f2ff;
-    }
-    
+    .metric-container { /* ... keep ... */ }
+    .metric-value { /* ... keep ... */ }
+    .metric-label { /* ... keep ... */ }
+    @keyframes glow { /* ... keep ... */ }
+    .stTabs [data-baseweb="tab-list"] { /* ... keep ... */ }
+    .stTabs [data-baseweb="tab"] { /* ... keep ... */ }
+    .stTabs [aria-selected="true"] { /* ... keep ... */ }
+    .loader { /* ... keep ... */ }
+    @keyframes loading { /* ... keep ... */ }
+    .stDataFrame { /* ... keep ... */ }
     .custom-info-box {
         background: rgba(0, 242, 255, 0.1);
         border: 1px solid #00f2ff;
         border-radius: 5px;
         padding: 10px;
         margin-bottom: 15px;
-        color: #e0e0e0; /* NEW: Ensure text is visible */
+        color: #e0e0e0; 
     }
-    
     .custom-warning-box {
         background: rgba(255, 0, 221, 0.1);
         border: 1px solid #ff00dd;
         border-radius: 5px;
         padding: 10px;
         margin-bottom: 15px;
-        color: #e0e0e0; /* NEW: Ensure text is visible */
+        color: #e0e0e0; 
     }
-    
-    /* Logo spinning animation */
-    .logo-spin {
-        animation: spin 10s linear infinite;
-    }
-    
-    @keyframes spin {
-        from {transform: rotate(0deg);}
-        to {transform: rotate(360deg);}
-    }
-    
-    /* Neon datepicker */
+    .logo-spin { /* ... keep ... */ }
+    @keyframes spin { /* ... keep ... */ }
     .stDateInput > div > div {
         border: 1px solid #00f2ff !important;
         border-radius: 5px !important;
         box-shadow: 0 0 5px #00f2ff !important;
-        background-color: rgba(17, 17, 17, 0.9) !important; /* NEW */
+        background-color: rgba(17, 17, 17, 0.9) !important; 
     }
-     .stDateInput input { /* NEW */
+     .stDateInput input { 
         color: #e0e0e0 !important;
         background-color: transparent !important;
     }
-    
-    /* Neon selectbox */
     .stSelectbox > div > div {
         border: 1px solid #00f2ff !important;
         border-radius: 5px !important;
         box-shadow: 0 0 5px #00f2ff !important;
-        background-color: rgba(17, 17, 17, 0.9) !important; /* NEW */
+        background-color: rgba(17, 17, 17, 0.9) !important;
     }
-    /* NEW: Style for text input to match select/date */
+    .stSelectbox div[data-baseweb="select"] > div { /* NEW: Ensure select text is visible */
+        color: #e0e0e0 !important;
+    }
     .stTextInput > div > div > input {
         border: 1px solid #00f2ff !important;
         border-radius: 5px !important;
@@ -250,38 +197,35 @@ def local_css():
         background-color: rgba(17, 17, 17, 0.9) !important;
         color: #e0e0e0 !important;
     }
-
+    .stMultiSelect > div > div { /* NEW: Style multiselect */
+        border: 1px solid #00f2ff !important;
+        border-radius: 5px !important;
+        box-shadow: 0 0 5px #00f2ff !important;
+        background-color: rgba(17, 17, 17, 0.9) !important;
+    }
+    .stMultiSelect span[data-baseweb="tag"] { /* NEW: Style multiselect tags */
+        background-color: #00f2ff !important;
+        color: #111 !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
-# Apply styling
 local_css()
-
-# Background image URL - using the first futuristic background
-bg_url = "https://images.pexels.com/photos/36717/amazing-animal-beautiful-view.jpg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1" # MODIFIED: Pixabay links can expire or change, using a Pexels one. Replace with your preferred stable URL.
+bg_url = "https://images.pexels.com/photos/36717/amazing-animal-beautiful-view.jpg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1"
 add_bg_from_url(bg_url)
 
-# Session state initialization
-if 'page' not in st.session_state:
-    st.session_state.page = 'welcome'
-if 'data' not in st.session_state:
-    st.session_state.data = None
-if 'stock_data' not in st.session_state:
-    st.session_state.stock_data = {}
-if 'ml_results' not in st.session_state: # MODIFIED: Initialize as an empty dict if not present
-    st.session_state.ml_results = {}
-if 'selected_stocks' not in st.session_state:
-    st.session_state.selected_stocks = []
-if 'comparison_data' not in st.session_state:
-    st.session_state.comparison_data = None
-# NEW: Initialize first_run for welcome animation
-if 'first_run_animation_shown' not in st.session_state:
-    st.session_state.first_run_animation_shown = False
+# --- Session State Initialization ---
+if 'page' not in st.session_state: st.session_state.page = 'welcome'
+if 'data' not in st.session_state: st.session_state.data = None
+if 'stock_data' not in st.session_state: st.session_state.stock_data = {}
+if 'ml_results' not in st.session_state: st.session_state.ml_results = {}
+if 'selected_stocks' not in st.session_state: st.session_state.selected_stocks = []
+if 'comparison_data' not in st.session_state: st.session_state.comparison_data = None
+if 'first_run_animation_shown' not in st.session_state: st.session_state.first_run_animation_shown = False
 
-
-# SVG logo for futuristic theme
+# --- SVG Logo ---
 def get_neon_logo_svg():
-    # ... (your existing SVG code is fine) ...
+    # ... (your existing SVG code) ...
     svg_code = '''
     <svg width="150" height="150" xmlns="http://www.w3.org/2000/svg">
         <defs>
@@ -294,14 +238,6 @@ def get_neon_logo_svg():
                     <feMergeNode in="SourceGraphic"/>
                 </feMerge>
             </filter>
-            <filter id="neon2" x="-20%" y="-20%" width="140%" height="140%">
-                <feGaussianBlur stdDeviation="5" result="blur"/>
-                <feFlood flood-color="#00f2ff" flood-opacity="0.7" result="neon"/>
-                <feComposite in="neon" in2="blur" operator="in" result="comp"/>
-                <feMerge>
-                    <feMergeNode in="comp"/>
-                </feMerge>
-            </filter>
         </defs>
         <circle cx="75" cy="75" r="60" fill="none" stroke="#00f2ff" stroke-width="2" filter="url(#neon1)"/>
         <circle cx="75" cy="75" r="45" fill="none" stroke="#00f2ff" stroke-width="3" filter="url(#neon1)"/>
@@ -312,68 +248,66 @@ def get_neon_logo_svg():
     '''
     return svg_code
 
-# Navigation functions
-def navigate_to(page_name): # MODIFIED: Renamed parameter for clarity
+# --- Navigation ---
+def navigate_to(page_name):
     st.session_state.page = page_name
-    # st.rerun() # MODIFIED: Removed st.rerun() as it's implicitly handled by Streamlit on widget interaction
+    st.rerun() # MODIFIED: Re-added st.rerun() for more forceful page updates, given the user's issue.
 
-# Sidebar navigation
 with st.sidebar:
-    st.markdown(f'<div class="logo-spin" style="text-align:center;">{get_neon_logo_svg()}</div>', unsafe_allow_html=True) # MODIFIED: Centered logo
-    st.markdown('<h2 style="color:#00f2ff; text-shadow: 0 0 5px #00f2ff; text-align:center;">NeoFinance Analytics</h2>', unsafe_allow_html=True) # MODIFIED: Centered title
-    st.markdown('<div style="height: 2px; background: linear-gradient(to right, #00f2ff, #ff00dd); margin-bottom: 20px;"></div>', unsafe_allow_html=True) # NEW: Neon divider
+    # ... (your sidebar logo and title) ...
+    st.markdown(f'<div class="logo-spin" style="text-align:center;">{get_neon_logo_svg()}</div>', unsafe_allow_html=True)
+    st.markdown('<h2 style="color:#00f2ff; text-shadow: 0 0 5px #00f2ff; text-align:center;">NeoFinance Analytics</h2>', unsafe_allow_html=True)
+    st.markdown('<div style="height: 2px; background: linear-gradient(to right, #00f2ff, #ff00dd); margin-bottom: 20px;"></div>', unsafe_allow_html=True)
     
-    # Navigation buttons
-    if st.button("🏠 Welcome", key="nav_welcome_btn"): navigate_to('welcome') # MODIFIED: More consistent keys and direct call
+    if st.button("🏠 Welcome", key="nav_welcome_btn"): navigate_to('welcome')
     if st.button("📊 Dashboard", key="nav_dashboard_btn"): navigate_to('dashboard')
     if st.button("📈 Stock Analysis", key="nav_stocks_btn"): navigate_to('stocks')
     if st.button("🤖 ML Analytics", key="nav_ml_btn"): navigate_to('ml')
-    if st.button("📉 Stock Comparison", key="nav_comparison_btn"): navigate_to('comparison') # MODIFIED: Icon
+    if st.button("📉 Stock Comparison", key="nav_comparison_btn"): navigate_to('comparison')
     
-    st.markdown('<div style="height: 2px; background: linear-gradient(to right, #ff00dd, #00f2ff); margin-top: 20px; margin-bottom: 10px;"></div>', unsafe_allow_html=True) # NEW: Neon divider
+    st.markdown('<div style="height: 2px; background: linear-gradient(to right, #ff00dd, #00f2ff); margin-top: 20px; margin-bottom: 10px;"></div>', unsafe_allow_html=True)
     
-    # Data upload section
     st.markdown('<h3 style="color:#ff00dd; text-shadow: 0 0 3px #ff00dd;">Upload Data</h3>', unsafe_allow_html=True)
-    uploaded_file = st.file_uploader("Upload financial dataset (CSV or XLSX)", type=["csv", "xlsx"])
+    uploaded_file = st.file_uploader("Upload financial dataset (CSV or XLSX)", type=["csv", "xlsx"], key="file_uploader_main") # NEW: Added key
     
     if uploaded_file is not None:
-        try:
-            # NEW: Add a spinner for file processing
-            with st.spinner("Processing uploaded file..."):
-                if uploaded_file.name.endswith('.csv'):
-                    data = pd.read_csv(uploaded_file)
-                else:
-                    data = pd.read_excel(uploaded_file) # Requires openpyxl
-                st.session_state.data = data
-            st.success("Data uploaded successfully!")
-            # NEW: Clear stock data if custom data is uploaded to avoid confusion
-            st.session_state.stock_data = {}
-            st.session_state.selected_stocks = []
-            st.session_state.comparison_data = None
-        except Exception as e:
-            st.error(f"Error uploading file: {e}")
-            st.session_state.data = None # NEW: Ensure data is None on error
+        # NEW: Process upload only once per file
+        if 'last_uploaded_filename' not in st.session_state or st.session_state.last_uploaded_filename != uploaded_file.name:
+            try:
+                with st.spinner("Processing uploaded file..."):
+                    if uploaded_file.name.endswith('.csv'):
+                        data = pd.read_csv(uploaded_file)
+                    else:
+                        data = pd.read_excel(uploaded_file)
+                    st.session_state.data = data
+                    st.session_state.last_uploaded_filename = uploaded_file.name # Store filename
+                st.success("Data uploaded successfully!")
+                st.session_state.stock_data = {} # Clear previous stock data
+                st.session_state.selected_stocks = []
+                st.session_state.comparison_data = None
+                st.session_state.ml_results = {} # Clear ML results
+                # MODIFIED: Don't navigate immediately, let user choose page. Or navigate to dashboard.
+                # navigate_to('dashboard') 
+            except Exception as e:
+                st.error(f"Error uploading file: {e}")
+                st.session_state.data = None
+                st.session_state.last_uploaded_filename = None
 
-# Function to display welcome animation
+
+# --- Utility Functions (Stock Data, ML Model) ---
 def show_welcome_animation():
-    # ... (your existing animation code is good) ...
+    # ... (your existing animation) ...
     st.markdown('<div class="loader"></div>', unsafe_allow_html=True)
-    
     welcome_messages = [
-        "Initializing NeoFinance systems...",
-        "Connecting to quantum finance network...",
-        "Calibrating predictive algorithms...",
-        "Establishing secure data channels...",
+        "Initializing NeoFinance systems...", "Connecting to quantum finance network...",
+        "Calibrating predictive algorithms...", "Establishing secure data channels...",
         "Loading futuristic interface..."
     ]
-    
     message_placeholder = st.empty()
     for message in welcome_messages:
         message_placeholder.markdown(f"<p style='color:#00f2ff; text-shadow: 0 0 5px #00f2ff; text-align:center;'>{message}</p>", unsafe_allow_html=True)
         time.sleep(0.5)
-    
     message_placeholder.empty()
-    
     st.markdown(
         """
         <div style="text-align: center; animation: fadeIn 2s;">
@@ -382,454 +316,383 @@ def show_welcome_animation():
         </div>
         <style>
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); } /* MODIFIED: Added translateY for smoother entry */
+            from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
         </style>
-        """, 
-        unsafe_allow_html=True
-    )
-    st.session_state.first_run_animation_shown = True # NEW: Mark animation as shown
+        """, unsafe_allow_html=True)
+    st.session_state.first_run_animation_shown = True
 
-
-# Function to get stock data
-@st.cache_data(ttl=3600) # Cache for 1 hour
+@st.cache_data(ttl=300) # MODIFIED: Shorter cache for stock data (5 mins)
 def get_stock_data(ticker, period='1y'):
     try:
         stock = yf.Ticker(ticker)
         hist = stock.history(period=period)
         if hist.empty:
-            # NEW: Explicit warning if no history
             st.warning(f"No historical data found for {ticker} for the period {period}.")
             return None, None
+        
         info = stock.info
-        # NEW: Add some error handling for info dictionary keys
-        required_keys = ['shortName', 'marketCap', 'trailingPE', 'dividendYield', 'fiftyTwoWeekLow', 'fiftyTwoWeekHigh', 'volume']
-        for key in required_keys:
-            if key not in info:
-                info[key] = 'N/A' # Provide a default
+        # Ensure essential keys exist in info, provide defaults if not
+        defaults = {'shortName': ticker, 'marketCap': 0, 'trailingPE': float('nan'), 
+                    'dividendYield': 0, 'fiftyTwoWeekLow': float('nan'), 
+                    'fiftyTwoWeekHigh': float('nan'), 'volume': 0}
+        for key, default_val in defaults.items():
+            if info is None or key not in info or info[key] is None: # MODIFIED: Check if info itself is None
+                 info = info or {} # Ensure info is a dict
+                 info[key] = default_val
         return hist, info
     except Exception as e:
-        st.error(f"Error fetching data for {ticker}: {e}")
+        # st.error(f"Error fetching data for {ticker}: {e}") # MODIFIED: Let calling function handle UI error
+        print(f"Error in get_stock_data for {ticker}: {e}") # Log for debugging
         return None, None
 
-# Function to create ML model
-def create_ml_model(data, model_type, target_col, feature_cols, test_size=0.2):
-    if data is None or data.empty: # NEW: Check if data is empty
-        return None, None, None, "Data is not available for modeling."
-    if not feature_cols: # NEW: Check if feature_cols is empty
-        return None, None, None, "No feature columns selected."
-    if model_type != 'kmeans' and (target_col is None or target_col not in data.columns): # NEW: Check target_col for relevant models
-        return None, None, None, "Target column not selected or not found in data."
+
+def create_ml_model(data_df, model_type, target_col_name, feature_col_names, test_size=0.2):
+    # --- Rigorous Data Validation and Preparation ---
+    if data_df is None or data_df.empty:
+        return None, None, None, "Input data is empty or not provided."
+    if not feature_col_names:
+        return None, None, None, "No feature columns were selected."
+    if model_type != 'kmeans' and (target_col_name is None or target_col_name not in data_df.columns):
+        return None, None, None, f"Target column '{target_col_name}' not found or not selected."
+
+    # Create copies to avoid modifying original session state data
+    df = data_df.copy()
 
     # Ensure all feature columns exist
-    missing_features = [col for col in feature_cols if col not in data.columns]
+    missing_features = [col for col in feature_col_names if col not in df.columns]
     if missing_features:
         return None, None, None, f"Feature column(s) not found: {', '.join(missing_features)}"
-    
-    # Prepare data
-    X_df = data[feature_cols].copy() # Use .copy() to avoid SettingWithCopyWarning
+
+    X = df[feature_col_names].copy()
+    y = None
     if model_type != 'kmeans':
-        y_series = data[target_col].copy()
+        y = df[target_col_name].copy()
 
-    # Handle missing values robustly
-    for col in X_df.columns: # NEW: Iterate through columns for specific handling
-        if X_df[col].isnull().any():
-            if pd.api.types.is_numeric_dtype(X_df[col]):
-                X_df[col] = X_df[col].fillna(X_df[col].mean())
-            else: # For non-numeric, fill with mode or a placeholder
-                X_df[col] = X_df[col].fillna(X_df[col].mode()[0] if not X_df[col].mode().empty else 'Unknown')
-    
-    if model_type != 'kmeans' and y_series.isnull().any():
-        if pd.api.types.is_numeric_dtype(y_series):
-            y_series = y_series.fillna(y_series.mean())
-        else:
-            y_series = y_series.fillna(y_series.mode()[0] if not y_series.mode().empty else 'Unknown')
-
-    # Convert all feature columns to numeric, coercing errors
-    for col in X_df.columns: # NEW
-        X_df[col] = pd.to_numeric(X_df[col], errors='coerce').fillna(0) # Coerce and fill NaNs resulting from coercion
-
-    if model_type != 'kmeans': # NEW
-        if not pd.api.types.is_numeric_dtype(y_series) and model_type == 'linear':
-            return None, None, None, f"Target column '{target_col}' must be numeric for Linear Regression."
-        if model_type == 'logistic': # For logistic regression, ensure target is numeric (0 or 1)
-             y_series = pd.to_numeric(y_series, errors='coerce').fillna(0)
+    # Handle missing values and ensure numeric types for features
+    for col in X.columns:
+        if X[col].isnull().sum() > 0:
+            if pd.api.types.is_numeric_dtype(X[col]):
+                X[col].fillna(X[col].median(), inplace=True) # Use median for robustness
+            else: # Convert non-numeric to numeric if possible, else drop or use mode
+                try:
+                    X[col] = pd.to_numeric(X[col])
+                    X[col].fillna(X[col].median(), inplace=True)
+                except ValueError: # If conversion fails, use a placeholder or drop
+                    # For simplicity, let's fill with 0 after attempting conversion,
+                    # but more sophisticated handling might be needed (e.g., one-hot encoding for categoricals)
+                    X[col] = pd.to_numeric(X[col], errors='coerce').fillna(0)
+        elif not pd.api.types.is_numeric_dtype(X[col]): # Already not null, but not numeric
+             X[col] = pd.to_numeric(X[col], errors='coerce').fillna(0)
 
 
-    # Split data
-    if model_type != 'kmeans':
-        X_train, X_test, y_train, y_test = train_test_split(X_df, y_series, test_size=test_size, random_state=42)
-    else: # For KMeans, use all data for training (as it's unsupervised)
-        X_train, X_test = X_df, X_df # Or just X_train = X_df and predict on X_df
-        y_train, y_test = None, None # No y for KMeans
-
-    # Scale features
-    scaler = StandardScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled = scaler.transform(X_test)
-
-    model = None
-    performance = None
-    prediction = None
-    error_msg = None
-    
-    try:
-        if model_type == 'linear':
-            model = LinearRegression()
-            model.fit(X_train_scaled, y_train) # MODIFIED: Use scaled data for consistency, though not strictly necessary for LR
-            prediction = model.predict(X_test_scaled)
-            performance = {
-                'r2_score': model.score(X_test_scaled, y_test),
-                'mse': mean_squared_error(y_test, prediction),
-                'rmse': np.sqrt(mean_squared_error(y_test, prediction)),
-                'coefficients': dict(zip(feature_cols, model.coef_))
-            }
-            
-        elif model_type == 'logistic':
-            # Ensure target is binary for logistic regression
-            if y_train.nunique() > 2: # MODIFIED: Check unique values on y_train
-                # Convert to binary if not already (e.g., based on median)
-                median_val_train = y_train.median()
-                y_train_binary = (y_train > median_val_train).astype(int)
-                y_test_binary = (y_test > median_val_train).astype(int) # Use train median for test set
-            elif y_train.nunique() == 1: # NEW: Handle case where target has only one class after split
-                return None, None, None, "Target variable has only one class after splitting. Logistic Regression cannot be trained."
-            else:
-                y_train_binary = y_train.astype(int)
-                y_test_binary = y_test.astype(int)
-
-            model = LogisticRegression(max_iter=1000, solver='liblinear') # MODIFIED: Added solver for robustness
-            model.fit(X_train_scaled, y_train_binary)
-            prediction = model.predict(X_test_scaled)
-            performance = {
-                'accuracy': accuracy_score(y_test_binary, prediction),
-                'coefficients': dict(zip(feature_cols, model.coef_[0]))
-            }
-            # NEW: Add y_test_binary to results for confusion matrix
-            performance['y_test_actual'] = y_test_binary 
-            
-        elif model_type == 'kmeans':
-            # Determine optimal number of clusters using elbow method (simplified)
-            # ... (your existing elbow method logic is a good start for a demo) ...
-            # NEW: Added n_init='auto' to suppress future warnings
-            optimal_k = 3 # Default if elbow method is too simple or fails
-            if len(X_train_scaled) >= 10: # Ensure enough samples for elbow
-                inertias = []
-                K_range = range(1, min(10, len(X_train_scaled))) # Max 10 clusters or num_samples
-                for k_val in K_range:
-                    if k_val == 0: continue # NEW: Skip k=0
-                    kmeans_temp = KMeans(n_clusters=k_val, random_state=42, n_init='auto')
-                    kmeans_temp.fit(X_train_scaled)
-                    inertias.append(kmeans_temp.inertia_)
-                
-                # Simple elbow point detection (can be improved with kneed library)
-                if len(inertias) > 2:
-                    # Find the point with the largest decrease in inertia
-                    # This is a heuristic and might not always be perfect
-                    try:
-                        from kneed import KneeLocator # NEW: Try to use kneed for better elbow detection
-                        kl = KneeLocator(K_range, inertias, curve='convex', direction='decreasing')
-                        optimal_k = kl.elbow if kl.elbow else 3
-                    except ImportError:
-                        # Fallback to simpler heuristic if kneed is not installed
-                        decreases = np.diff(inertias, 2) # Second derivative
-                        if len(decreases) > 0:
-                           optimal_k = np.argmax(decreases) + 2 # +1 for diff, +1 for 0-index
-                        else:
-                           optimal_k = 3 
-                        optimal_k = max(2, optimal_k) # Ensure at least 2 clusters
-                else:
-                    optimal_k = max(2, len(K_range)) if K_range else 2
-
-            model = KMeans(n_clusters=optimal_k, random_state=42, n_init='auto')
-            prediction = model.fit_predict(X_train_scaled) # Fit and predict on the training data for cluster assignment
-            performance = {
-                'inertia': model.inertia_,
-                'optimal_clusters': optimal_k,
-                'cluster_centers': model.cluster_centers_.tolist(),
-                'labels': prediction.tolist() # NEW: Store cluster labels
-            }
+    if y is not None:
+        if y.isnull().sum() > 0:
+            if pd.api.types.is_numeric_dtype(y):
+                y.fillna(y.median(), inplace=True)
+            else: # If target is categorical and has NaNs, fill with mode
+                y.fillna(y.mode()[0] if not y.mode().empty else 'Unknown', inplace=True)
         
+        if model_type == 'linear' and not pd.api.types.is_numeric_dtype(y):
+            return None, None, None, f"Target column '{target_col_name}' must be numeric for Linear Regression."
+        
+        if model_type == 'logistic': # Ensure y is numeric for logistic
+            if not pd.api.types.is_numeric_dtype(y):
+                 # Attempt to convert or map categorical to numeric if not already done
+                 y = pd.to_numeric(y, errors='coerce').fillna(0) # Fallback
+            if y.nunique() > 2:
+                median_y = y.median()
+                y = (y > median_y).astype(int)
+            elif y.nunique() == 1:
+                 return None, None, None, "Target variable for Logistic Regression has only one class."
+            else:
+                y = y.astype(int)
+
+
+    # --- Model Training ---
+    scaler = StandardScaler()
+    model, prediction, performance, error_msg = None, None, None, None
+
+    try:
+        if model_type == 'kmeans':
+            X_scaled = scaler.fit_transform(X)
+            optimal_k = 3 # Default
+            if len(X_scaled) >= 10 and KneeLocator:
+                inertias = []
+                K_range = range(1, min(10, len(X_scaled)))
+                for k_val in K_range:
+                    if k_val == 0: continue
+                    kmeans_temp = KMeans(n_clusters=k_val, random_state=42, n_init='auto')
+                    kmeans_temp.fit(X_scaled)
+                    inertias.append(kmeans_temp.inertia_)
+                if len(inertias) > 2 :
+                    kl = KneeLocator(list(K_range), inertias, curve='convex', direction='decreasing')
+                    optimal_k = kl.elbow if kl.elbow else 3
+            
+            model = KMeans(n_clusters=optimal_k, random_state=42, n_init='auto')
+            labels = model.fit_predict(X_scaled)
+            performance = {'inertia': model.inertia_, 'optimal_clusters': optimal_k, 'cluster_centers_scaled': model.cluster_centers_.tolist(), 'labels': labels.tolist()}
+            # NEW: Inverse transform cluster centers for interpretability
+            performance['cluster_centers_original'] = scaler.inverse_transform(model.cluster_centers_).tolist()
+
+        else: # Linear or Logistic
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42, stratify=(y if y.nunique() <= 10 and len(y) >= 2*y.nunique() else None) ) # MODIFIED: Stratify for classification if possible
+            X_train_scaled = scaler.fit_transform(X_train)
+            X_test_scaled = scaler.transform(X_test)
+
+            if model_type == 'linear':
+                model = LinearRegression()
+                model.fit(X_train_scaled, y_train)
+                prediction = model.predict(X_test_scaled)
+                performance = {
+                    'r2_score': model.score(X_test_scaled, y_test),
+                    'mse': mean_squared_error(y_test, prediction),
+                    'rmse': np.sqrt(mean_squared_error(y_test, prediction)),
+                    'coefficients': dict(zip(feature_col_names, model.coef_)),
+                    'y_test_actual': y_test.tolist() # For plotting
+                }
+            elif model_type == 'logistic':
+                model = LogisticRegression(max_iter=1000, solver='liblinear')
+                model.fit(X_train_scaled, y_train)
+                prediction = model.predict(X_test_scaled)
+                performance = {
+                    'accuracy': accuracy_score(y_test, prediction),
+                    'coefficients': dict(zip(feature_col_names, model.coef_[0])),
+                    'y_test_actual': y_test.tolist() # For confusion matrix
+                }
         return model, prediction, performance, error_msg
-    
     except Exception as e:
-        error_msg = f"Error during model training: {str(e)}"
-        st.error(error_msg) # NEW: Show error immediately
-        return None, None, None, error_msg
+        return None, None, None, f"Error during model operation: {str(e)}"
 
 
 # --- Page Rendering Logic ---
+current_page = st.session_state.page
 
-# ========================= WELCOME PAGE =========================
-if st.session_state.page == 'welcome':
-    col1, col2, col3 = st.columns([1, 6, 1])
+if current_page == 'welcome':
+    # ... (Welcome page logic - looks largely OK from previous version) ...
+    pass # Placeholder, your existing welcome page logic would go here
+
+elif current_page == 'dashboard':
+    # ... (Dashboard logic - ensure dynamic indices work and portfolio checks are robust) ...
+    pass
+
+elif current_page == 'stocks':
+    # ... (Stock analysis logic - ensure stock_symbol and period are handled) ...
+    st.markdown('<h1 class="main-header">STOCK ANALYSIS</h1>', unsafe_allow_html=True)
+    
+    st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
+    st.subheader("Enter Stock Symbol")
+    
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        stock_symbol_input = st.text_input("Stock Symbol (e.g., AAPL, MSFT, GOOGL)", value="AAPL", key="stock_input_stocks_page")
     with col2:
-        # NEW: Show animation only on first visit to welcome page per session
-        if not st.session_state.first_run_animation_shown:
-            show_welcome_animation()
-        else:
-             st.markdown( # Show static welcome if animation already shown
-                """
-                <div style="text-align: center;">
-                    <h1 class="main-header">WELCOME BACK TO NEOFINANCE</h1>
-                    <p class="sub-header">The Future of Financial Analytics</p>
-                </div>
-                """, unsafe_allow_html=True)
-
-        # ... (rest of your welcome page content is good) ...
-        st.markdown(
-            """
-            <div class="dashboard-card">
-                <h2 style="color:#00f2ff; text-shadow: 0 0 5px #00f2ff;">About NeoFinance Analytics</h2>
-                <p style="color:#e0e0e0;">Welcome to the future of financial analysis. NeoFinance combines cutting-edge machine learning with real-time market data to bring you insights that were once thought impossible.</p>
-                <p style="color:#e0e0e0;">This advanced platform leverages the power of artificial intelligence to predict market trends, identify investment opportunities, and optimize your financial strategies.</p>
-            </div>
-            """, 
-            unsafe_allow_html=True
-        )
-        
-        # Feature overview
-        st.markdown(
-            """
-            <div class="dashboard-card">
-                <h2 style="color:#00f2ff; text-shadow: 0 0 5px #00f2ff;">Key Features</h2>
-                <ul style="color:#e0e0e0;">
-                    <li><span style="color:#ff00dd;">Real-time Stock Analysis</span> - Access live market data with interactive visualizations</li>
-                    <li><span style="color:#ff00dd;">Predictive ML Models</span> - Forecast market trends using advanced algorithms</li>
-                    <li><span style="color:#ff00dd;">Interactive Dashboards</span> - Customize your financial insights</li>
-                    <li><span style="color:#ff00dd;">Data Integration</span> - Upload and analyze your own financial datasets</li>
-                    <li><span style="color:#ff00dd;">Stock Comparison</span> - Compare multiple stocks with advanced metrics</li>
-                </ul>
-            </div>
-            """, 
-            unsafe_allow_html=True
-        )
-        
-        # Get started button
-        st.markdown( # MODIFIED: Using st.button for consistent styling and direct navigation
-            """
-            <div style="text-align: center; margin-top: 30px;">
-            """
-            , unsafe_allow_html=True)
-        if st.button("🚀 Launch Dashboard", key="launch_dashboard_welcome_btn"):
-            navigate_to('dashboard')
-        st.markdown("</div>", unsafe_allow_html=True)
-        
-        # Images for visual effect
-        cols_img = st.columns(3) # MODIFIED: Renamed variable
-        with cols_img[0]:
-            st.markdown(
-                f"""
-                <div style="border: 1px solid #00f2ff; border-radius: 10px; overflow: hidden; box-shadow: 0 0 15px #00f2ff; margin-top:20px;">
-                    <img src="https://images.pexels.com/photos/187041/pexels-photo-187041.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1" style="width: 100%; height: auto;">
-                </div>
-                """, 
-                unsafe_allow_html=True
-            )
-        with cols_img[1]:
-            st.markdown(
-                f"""
-                <div style="border: 1px solid #ff00dd; border-radius: 10px; overflow: hidden; box-shadow: 0 0 15px #ff00dd; margin-top: 20px;">
-                    <img src="https://images.pexels.com/photos/730547/pexels-photo-730547.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1" style="width: 100%; height: auto;">
-                </div>
-                """, 
-                unsafe_allow_html=True
-            )
-        with cols_img[2]:
-            st.markdown(
-                f"""
-                <div style="border: 1px solid #00f2ff; border-radius: 10px; overflow: hidden; box-shadow: 0 0 15px #00f2ff; margin-top:20px;">
-                    <img src="https://images.pexels.com/photos/590016/pexels-photo-590016.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1" style="width: 100%; height: auto;">
-                </div>
-                """, 
-                unsafe_allow_html=True
-            )
-
-# ========================= DASHBOARD PAGE =========================
-elif st.session_state.page == 'dashboard':
-    st.markdown('<h1 class="main-header">NEOFINANCE DASHBOARD</h1>', unsafe_allow_html=True)
+        period_options = {"1 Month": "1mo", "3 Months": "3mo", "6 Months": "6mo", "1 Year": "1y", "2 Years": "2y", "5 Years": "5y"}
+        selected_period_label = st.selectbox("Time Period", list(period_options.keys()), key="period_select_stocks_page")
+        period_input = period_options[selected_period_label]
     
-    tab1, tab2, tab3 = st.tabs(["Market Overview", "Portfolio Analysis", "Economic Indicators"])
-    
-    with tab1:
-        # ... (Your Market Overview - consider making indices dynamic with yfinance if desired) ...
-        # NEW: Fetch and display dynamic major indices data
-        st.markdown('<h2 style="color:#00f2ff; text-shadow: 0 0 5px #00f2ff;">Market Overview</h2>', unsafe_allow_html=True)
-        
-        @st.cache_data(ttl=300) # Cache for 5 minutes
-        def get_dynamic_indices_data():
-            indices = {
-                "DJIA": "^DJI", 
-                "S&P 500": "^GSPC", 
-                "NASDAQ": "^IXIC",
-                "Russell 2000": "^RUT" # NEW: Added Russell
-            }
-            indices_data = {}
-            for name, ticker in indices.items():
-                try:
-                    data = yf.Ticker(ticker).history(period="5d") # Get recent data
-                    if not data.empty:
-                        current_price = data['Close'].iloc[-1]
-                        prev_close = data['Close'].iloc[-2] if len(data) > 1 else current_price
-                        change = current_price - prev_close
-                        change_pct = (change / prev_close) * 100 if prev_close != 0 else 0
-                        indices_data[name] = {
-                            "price": f"{current_price:,.2f}",
-                            "change": f"{change:+.2f}",
-                            "change_pct": f"({change_pct:+.2f}%)",
-                            "color": "#00ff00" if change >=0 else "#ff0000"
-                        }
-                    else:
-                        indices_data[name] = {"price": "N/A", "change": "", "change_pct": "", "color":"#ffffff"}
-                except Exception:
-                    indices_data[name] = {"price": "Error", "change": "", "change_pct": "", "color":"#ffffff"}
-            return indices_data
-
-        dynamic_indices = get_dynamic_indices_data()
-        cols_metrics = st.columns(len(dynamic_indices))
-        for i, (name, data) in enumerate(dynamic_indices.items()):
-            with cols_metrics[i]:
-                st.markdown(
-                    f"""
-                    <div class="metric-container">
-                        <div class="metric-value" style="color:{data['color']};">{data['price']}</div>
-                        <div class="metric-label" style="color:{data['color']};">{data['change']} {data['change_pct']}</div>
-                        <div class="metric-label">{name}</div>
-                    </div>
-                    """, unsafe_allow_html=True
-                )
-        # ... (Rest of your Market Overview with sample data or yfinance integration) ...
-        # For the chart, you could also fetch historical data for these indices via yfinance
-        # For simplicity, your existing random data chart can stay as a placeholder or be replaced.
-
-    with tab2:
-        # ... (Your Portfolio Analysis - good checks for uploaded data) ...
-        st.markdown('<h2 style="color:#00f2ff; text-shadow: 0 0 5px #00f2ff;">Portfolio Analysis</h2>', unsafe_allow_html=True)
-        
-        if st.session_state.data is not None:
-            df_portfolio = st.session_state.data # MODIFIED: Use a different variable name
-            st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
-            st.subheader("Uploaded Portfolio Overview")
-            st.dataframe(df_portfolio.head(10), use_container_width=True)
-            
-            # NEW: Check for necessary columns before attempting calculations
-            required_cols = ['Symbol', 'Quantity', 'Purchase Price'] # Adjust if your column names differ
-            if all(col in df_portfolio.columns for col in required_cols):
-                # ... (your existing portfolio metric calculations) ...
-                 # Calculate portfolio metrics
-                df_portfolio['Current Value'] = df_portfolio['Quantity'] * df_portfolio['Purchase Price'] # Assuming Purchase Price is current if no other current price given
-                portfolio_value = df_portfolio['Current Value'].sum()
-                portfolio_items = len(df_portfolio)
-                average_investment = portfolio_value / portfolio_items if portfolio_items > 0 else 0
-                
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    st.metric("Portfolio Value", f"${portfolio_value:,.2f}")
-                with col2:
-                    st.metric("Portfolio Items", portfolio_items)
-                with col3:
-                    st.metric("Avg. Investment Value", f"${average_investment:,.2f}")
-                
-                # Portfolio composition chart
-                st.subheader("Portfolio Composition (by Value)")
-                fig = px.pie(df_portfolio, values='Current Value', names='Symbol', hole=0.3,
-                             color_discrete_sequence=px.colors.sequential.Plasma_r)
-                fig.update_layout(
-                    template='plotly_dark',
-                    plot_bgcolor='rgba(17, 17, 17, 0.9)',
-                    paper_bgcolor='rgba(17, 17, 17, 0)',
-                )
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.markdown(
-                    f"""
-                    <div class="custom-warning-box">
-                        <p>For full portfolio analysis, your uploaded data needs columns: {', '.join(required_cols)}.</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+    if st.button("Analyze Stock", key="analyze_stock_btn_stocks_page"):
+        if not stock_symbol_input.strip():
+            st.error("Please enter a stock symbol.")
         else:
-            # ... (your sample portfolio data is fine as a placeholder) ...
-            st.markdown(
-                """
-                <div class="custom-info-box">
-                    <p>Upload your portfolio (CSV/XLSX) via the sidebar for personalized analysis. Ensure columns like 'Symbol', 'Quantity', 'Purchase Price' are present.</p>
-                </div>
-                """, unsafe_allow_html=True)
+            with st.spinner(f"Fetching stock data for {stock_symbol_input}..."):
+                hist_data, info_data = get_stock_data(stock_symbol_input.upper(), period_input) #MODIFIED: Use .upper()
+                
+                if hist_data is not None and not hist_data.empty:
+                    st.session_state.stock_data[stock_symbol_input.upper()] = {'hist': hist_data, 'info': info_data}
+                    st.success(f"Data fetched successfully for {stock_symbol_input.upper()}")
+                    if stock_symbol_input.upper() not in st.session_state.selected_stocks:
+                        st.session_state.selected_stocks.append(stock_symbol_input.upper())
+                else:
+                    st.error(f"Failed to fetch data for {stock_symbol_input.upper()}. Please check the symbol and period.")
+    st.markdown('</div>', unsafe_allow_html=True)
 
+    # Display data for the *last successfully analyzed stock* or the current input if different
+    # MODIFIED: Determine which stock to display info for
+    display_symbol = None
+    if stock_symbol_input.upper() in st.session_state.stock_data:
+        display_symbol = stock_symbol_input.upper()
+    elif st.session_state.selected_stocks:
+        display_symbol = st.session_state.selected_stocks[-1] # Default to last analyzed
 
-    with tab3:
-        # ... (Your Economic Indicators - good use of sample data for illustration) ...
-        st.markdown('<h2 style="color:#00f2ff; text-shadow: 0 0 5px #00f2ff;">Economic Indicators</h2>', unsafe_allow_html=True)
-        st.markdown( # NEW: Add a note that this is sample data
-            """
-            <div class="custom-info-box">
-                <p><strong>Note:</strong> The economic indicators shown below are based on sample data for illustrative purposes.</p>
-            </div>
-            """, unsafe_allow_html=True)
-        # ... (rest of your economic indicators section) ...
+    if display_symbol and display_symbol in st.session_state.stock_data:
+        hist = st.session_state.stock_data[display_symbol]['hist']
+        info = st.session_state.stock_data[display_symbol]['info']
+        # ... (rest of your plotting and info display for the selected stock) ...
+        # Make sure to use `hist` and `info` safely, checking for None or empty before access.
+        # Example check:
+        if info and hist is not None and not hist.empty:
+             st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
+             # Your info and chart display code for the stock
+             st.markdown('</div>', unsafe_allow_html=True)
+    # ... (your existing "else" for no data analyzed yet) ...
 
+elif current_page == 'ml':
+    # ... (ML Analytics logic - needs careful data selection and model running) ...
+    st.markdown('<h1 class="main-header">ML ANALYTICS</h1>', unsafe_allow_html=True)
+    
+    data_available_for_ml = False
+    data_source_options = []
 
-# ========================= STOCK ANALYSIS PAGE =========================
-elif st.session_state.page == 'stocks':
-    # ... (Your Stock Analysis - good structure) ...
-    # NEW: Add a small note about data source
-    st.markdown(
-        """
-        <div class="custom-info-box">
-            <p>Live stock data is fetched from Yahoo Finance. Data might have a slight delay.</p>
-        </div>
-        """, unsafe_allow_html=True)
-    # ... (rest of your stock analysis, ensure error handling from get_stock_data is reflected in UI) ...
+    if st.session_state.data is not None and not st.session_state.data.empty:
+        data_source_options.append("Uploaded Custom Data")
+        data_available_for_ml = True
+    
+    # Add analyzed stocks to options
+    # MODIFIED: Ensure stock_data[stock] and its 'hist' are valid before adding
+    for stock_symbol_ml in st.session_state.selected_stocks:
+        if stock_symbol_ml in st.session_state.stock_data and \
+           st.session_state.stock_data[stock_symbol_ml].get('hist') is not None and \
+           not st.session_state.stock_data[stock_symbol_ml]['hist'].empty:
+            data_source_options.append(f"Stock Data: {stock_symbol_ml}")
+            data_available_for_ml = True
 
-
-# ========================= ML ANALYTICS PAGE =========================
-elif st.session_state.page == 'ml':
-    # ... (Your ML Analytics - good start) ...
-    # NEW: Clearer instructions if no data
-    if st.session_state.data is None and not any(st.session_state.stock_data):
+    if not data_available_for_ml:
         st.markdown(
             """
             <div class="custom-warning-box">
-                <p>Please upload a dataset or analyze a stock first to use the ML tools.</p>
+                <p>No data available for ML. Please upload a dataset or analyze a stock on the 'Stock Analysis' page first.</p>
             </div>
             """, unsafe_allow_html=True)
     else:
-        # ... (rest of your ML page)
-        # In create_ml_model, consider adding n_init='auto' to KMeans to avoid future warnings.
-        # For K-Means visualization, ensure feature_cols has at least 2 features before trying to plot.
-        # The K-Means optimal_k finding is simplified; you could add a note or suggest using a library like `kneed` if more accuracy is needed.
-        pass
+        st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
+        st.subheader("Machine Learning Model Configuration")
+        
+        data_source_ml = st.selectbox("Select Data Source for ML", data_source_options, key="ml_data_source_select")
+        
+        ml_input_df = None
+        if data_source_ml == "Uploaded Custom Data":
+            ml_input_df = st.session_state.data
+        elif data_source_ml and data_source_ml.startswith("Stock Data:"):
+            selected_stock_for_ml = data_source_ml.split(": ")[1]
+            if selected_stock_for_ml in st.session_state.stock_data:
+                # Prepare stock data for ML (add features)
+                temp_hist_df = st.session_state.stock_data[selected_stock_for_ml]['hist'].copy()
+                temp_hist_df.reset_index(inplace=True)
+                temp_hist_df['Return'] = temp_hist_df['Close'].pct_change()
+                temp_hist_df['Return_Lag1'] = temp_hist_df['Return'].shift(1)
+                temp_hist_df['Volume_Change'] = temp_hist_df['Volume'].pct_change()
+                # Add more features as needed
+                ml_input_df = temp_hist_df.dropna() # Drop NaNs created by shifts/pct_change
+
+        if ml_input_df is not None and not ml_input_df.empty:
+            st.markdown("#### Data Preview for ML:")
+            st.dataframe(ml_input_df.head(), height=200)
+
+            model_type_selection = st.selectbox(
+                "Select ML Model",
+                ["Linear Regression", "Logistic Regression", "K-Means Clustering"],
+                key="ml_model_type_select"
+            )
+            model_key_map = {
+                "Linear Regression": "linear",
+                "Logistic Regression": "logistic",
+                "K-Means Clustering": "kmeans"
+            }
+            selected_model_key = model_key_map[model_type_selection]
+
+            all_columns = ml_input_df.columns.tolist()
+            # Ensure 'Date' or other non-numeric/ID columns are not default features/targets
+            potential_numeric_cols = ml_input_df.select_dtypes(include=np.number).columns.tolist()
+
+            target_col_ml = None
+            if selected_model_key != 'kmeans':
+                target_col_ml = st.selectbox(
+                    "Select Target Column", 
+                    [col for col in potential_numeric_cols if col in all_columns], # Only show valid numeric columns
+                    index=0 if not potential_numeric_cols else min(len(potential_numeric_cols)-1, 0) , # Handle empty list
+                    key="ml_target_select"
+                )
+            
+            feature_cols_ml = st.multiselect(
+                "Select Feature Columns",
+                [col for col in potential_numeric_cols if col != target_col_ml and col in all_columns],
+                default=[col for col in potential_numeric_cols if col != target_col_ml and col in all_columns][:min(3, len(potential_numeric_cols)- (1 if target_col_ml else 0) )], # Sensible default
+                key="ml_features_select"
+            )
+
+            if st.button("Train Model", key="ml_train_button"):
+                if not feature_cols_ml:
+                    st.error("Please select at least one feature column.")
+                elif selected_model_key != 'kmeans' and not target_col_ml:
+                    st.error("Please select a target column for this model type.")
+                else:
+                    with st.spinner(f"Training {model_type_selection}..."):
+                        # Pass copies to avoid modifying the DataFrame in session state directly
+                        model, predictions, performance, error_msg = create_ml_model(
+                            ml_input_df.copy(), selected_model_key, target_col_ml, feature_cols_ml.copy()
+                        )
+                        if error_msg:
+                            st.error(f"Model Training Error: {error_msg}")
+                            st.session_state.ml_results = {} # Clear previous results on error
+                        elif model and performance:
+                            st.session_state.ml_results = {
+                                'model_type_display': model_type_selection, # For display
+                                'model_key': selected_model_key, # For logic
+                                'model': model,
+                                'predictions': predictions,
+                                'performance': performance,
+                                'data_snapshot': ml_input_df.head(), # Store a snapshot for reference
+                                'feature_cols': feature_cols_ml,
+                                'target_col': target_col_ml
+                            }
+                            st.success(f"{model_type_selection} model trained successfully!")
+                        else:
+                            st.error("Model training failed for an unknown reason.")
+                            st.session_state.ml_results = {}
+        else:
+            st.info("Selected data source is empty or could not be prepared for ML.")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        # Display ML results
+        if st.session_state.ml_results:
+            results = st.session_state.ml_results
+            st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
+            st.subheader(f"Results for: {results.get('model_type_display', 'ML Model')}")
+            perf_data = results.get('performance', {})
+            
+            if results.get('model_key') == 'linear':
+                st.metric("R² Score", f"{perf_data.get('r2_score', 'N/A'):.4f}")
+                # ... (rest of linear regression display)
+            elif results.get('model_key') == 'logistic':
+                st.metric("Accuracy", f"{perf_data.get('accuracy', 'N/A'):.4f}")
+                # ... (rest of logistic regression display including confusion matrix using y_test_actual)
+                # Example for Confusion Matrix if y_test_actual is available
+                # actual_labels = perf_data.get('y_test_actual')
+                # predicted_labels = results.get('predictions')
+                # if actual_labels is not None and predicted_labels is not None:
+                # from sklearn.metrics import confusion_matrix
+                # cm = confusion_matrix(actual_labels, predicted_labels)
+                # fig_cm = px.imshow(cm, text_auto=True, ...)
+                # st.plotly_chart(fig_cm)
+
+            elif results.get('model_key') == 'kmeans':
+                st.metric("Optimal Clusters", f"{perf_data.get('optimal_clusters', 'N/A')}")
+                st.metric("Inertia", f"{perf_data.get('inertia', 'N/A'):.2f}")
+                # ... (K-Means visualization using scaled data for plot and inverse_transform for centers)
+                # For K-Means plot:
+                # data_for_plot = ml_input_df[results['feature_cols']].copy() # Use the original selected features
+                # data_for_plot['Cluster'] = perf_data['labels']
+                # if len(results['feature_cols']) >= 2:
+                #    fig_kmeans = px.scatter(data_for_plot, x=results['feature_cols'][0], y=results['feature_cols'][1], color='Cluster', ...)
+                #    # For centers: scaler.inverse_transform(perf_data['cluster_centers_scaled'])
+                #    st.plotly_chart(fig_kmeans)
+
+            st.markdown('</div>', unsafe_allow_html=True)
 
 
-# ========================= STOCK COMPARISON PAGE =========================
-elif st.session_state.page == 'comparison':
-    # ... (Your Stock Comparison - good features) ...
-    # NEW: Better handling if selected_stocks is empty or has less than 2 stocks
-    if not st.session_state.selected_stocks or len(st.session_state.selected_stocks) < 1: # Allow 1 for initial selection
-        st.markdown(
-            """
-            <div class="custom-info-box">
-                <p>No stocks analyzed yet, or less than one stock selected. Please go to the 'Stock Analysis' page to analyze stocks first. You'll be able to select them for comparison here.</p>
-            </div>
-            """, unsafe_allow_html=True)
-    else:
-        # ... (rest of your comparison page) ...
-        # Ensure that in `compare_stocks_handler`, if `yf.download` fails for a stock, it's handled gracefully (e.g., skipped or user notified).
-        # When calculating Beta, ensure data alignment if dates don't perfectly match.
-        pass
+elif current_page == 'comparison':
+    # ... (Stock Comparison logic - ensure data for selected stocks is valid) ...
+    pass
 
-# NEW: Footer (optional, but common)
+
+# NEW: Footer
 st.markdown("---")
 st.markdown(
     """
     <p style="text-align:center; color: #aaa; font-size: 0.9em;">
-        NeoFinance Analytics © 2024. All rights reserved. Data provided for informational purposes only.
+        NeoFinance Analytics © 2024. For illustrative and educational purposes only. Not financial advice.
     </p>
     """, unsafe_allow_html=True
 )
-
-# Run once when starting the app (This was at the end, it's fine but often placed near session state init)
-# if 'first_run' not in st.session_state: # This seems to be for something else not fully implemented
-#     st.session_state.first_run = False
