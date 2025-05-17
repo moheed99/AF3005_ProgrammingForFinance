@@ -1282,6 +1282,7 @@ def welcome_page():
     </div>
     """, unsafe_allow_html=True)
 
+
     cols_curriculum = st.columns(4)
     curriculum_steps = [
         {"title": "Phase I: Data Influx & Transmutation", "icon": POTION, "desc": "Initiate by interfacing with financial data streams via CSV chrono-scrolls or by divining live market signatures through ticker-runes in the Data Transmutation Chamber."},
@@ -1293,7 +1294,7 @@ def welcome_page():
     for i, step in enumerate(curriculum_steps):
         with cols_curriculum[i]:
             st.markdown(f"""
-            <div class="spell-note animated-text animated-text-delay-{i+1} futuristic-text" style="height: 320px; display: flex; flex-direction: column; justify-content: space-between;"> {/* Increased height */}
+            <div class="spell-note animated-text animated-text-delay-{i+1} futuristic-text" style="height: 320px; display: flex; flex-direction: column; justify-content: space-between;">
                 <div>
                     <h4 style="text-align:center; color:{theme['primary']};"><span style="font-size:1.5em;">{step['icon']}</span> {step['title']}</h4>
                     <p style="font-size:0.9em;">{step['desc']}</p>
