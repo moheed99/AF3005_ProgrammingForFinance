@@ -176,7 +176,7 @@ h3 {{
 }}
 
 .sidebar .sidebar-content {{
-  background-image: url('{theme["background"]}');
+  background-image: url('https://wallpapercave.com/wp/wp2182819.jpg'); /* Hogwarts wallpaper for menu bar */
   background-size: cover;
   background-repeat: no-repeat;
   color: {theme["primary"]} !important;
@@ -285,19 +285,6 @@ def welcome_page():
             font-size: 1.5em;
             max-width: 600px;
             margin-bottom: 30px;
-        }}
-        .welcome-screen button {{
-            background-color: #4CAF50;
-            border: none;
-            color: white;
-            padding: 15px 32px;
-            text-align: center;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 16px;
-            margin: 4px 2px;
-            cursor: pointer;
-            border-radius: 8px;
         }}
         </style>
         <div class="welcome-screen">
