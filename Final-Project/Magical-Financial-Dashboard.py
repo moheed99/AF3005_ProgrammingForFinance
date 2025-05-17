@@ -9,71 +9,67 @@ import matplotlib.pyplot as plt
 import plotly.graph_objs as go
 import yfinance as yf
 import seaborn as sns
-import base64
-from PIL import Image
-import io
+# import base64 # Not actively used, can be removed if not needed for other image processing
+# from PIL import Image # Not actively used, can be removed if not needed for other image processing
+# import io # Not actively used, can be removed if not needed for other image processing
 import time
 import random
 
 # Set page config
 st.set_page_config(
     page_title="Harry Potter Financial Mystics - Futuristic Wizarding World",
-    page_icon="🧙‍♂️",
+    page_icon="🧙‍♂️", # You can use an emoji or a URL to an icon
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
 # Hogwarts houses with enhanced futuristic magical themes
+# REPLACE "YOUR_..." with actual URLs
 house_themes = {
-    "None": {
-        "wallpaper_url": "https://i.imgur.com/6hZ0Q1M.jpg",  # Hogwarts Castle - Hogwarts Legacy Style
-        "primary": "#fedd00", # Gold
-        "secondary": "#662d91", # Purple
-        "text": "#eee7db", # Parchment
+    "None": { # Default Hogwarts Theme
+        "primary": "#fedd00", 
+        "secondary": "#662d91", 
+        "text": "#eee7db", 
         "button_bg": "linear-gradient(45deg, #662d91, #fedd00)",
         "button_hover_bg": "linear-gradient(45deg, #fedd00, #662d91)",
-        "house_logo": "https://i.imgur.com/Bt5Uyvw.png",  # Hogwarts crest
-        "background_video": "https://i.imgur.com/xnTzwxu.mp4"
+        "house_logo": "https://as1.ftcdn.net/v2/jpg/06/77/13/60/1000_F_677136057_O7VjvaSsdEpRjZrz79g2SzCZ2Hgzz55A.jpg", # e.g., https://i.imgur.com/Bt5Uyvw.png
+        "background_video": "YOUR_DEFAULT_HOGWARTS_VIDEO_URL_HERE" # e.g., https://i.imgur.com/xnTzwxu.mp4
     },
     "Gryffindor": {
-        "wallpaper_url": "https://i.imgur.com/9gD0x0g.jpg",  # Gryffindor Common Room - Hogwarts Legacy
         "primary": "#AE0001",
         "secondary": "#EEBA30",
         "text": "#fff2cc",
         "button_bg": "linear-gradient(45deg, #AE0001, #EEBA30)",
         "button_hover_bg": "linear-gradient(45deg, #EEBA30, #AE0001)",
-        "house_logo": "https://i.imgur.com/nCU2QKo.png",
-        "background_video": "https://i.imgur.com/nXEZb5S.mp4"
+        "house_logo": "YOUR_GRYFFINDOR_LOGO_URL_HERE", # e.g., https://i.imgur.com/nCU2QKo.png
+        "background_video": "YOUR_GRYFFINDOR_VIDEO_URL_HERE" # e.g., https://i.imgur.com/nXEZb5S.mp4
     },
     "Slytherin": {
-        "wallpaper_url": "https://i.imgur.com/pwxpNrN.jpg",  # Slytherin Common Room - Hogwarts Legacy Underwater
         "primary": "#1A472A",
         "secondary": "#AAAAAA",
         "text": "#d0f0c0",
         "button_bg": "linear-gradient(45deg, #1A472A, #AAAAAA)",
         "button_hover_bg": "linear-gradient(45deg, #AAAAAA, #1A472A)",
-        "house_logo": "https://i.imgur.com/DZ9tEb2.png",
-        "background_video": "https://i.imgur.com/tWEp9VH.mp4"
+        "house_logo": "YOUR_SLYTHERIN_LOGO_URL_HERE", # e.g., https://i.imgur.com/DZ9tEb2.png
+        "background_video": "YOUR_SLYTHERIN_VIDEO_URL_HERE" # e.g., https://i.imgur.com/tWEp9VH.mp4
     },
     "Hufflepuff": {
-        "wallpaper_url": "https://i.imgur.com/B9Y4S9A.jpg",  # Hufflepuff Common Room - Hogwarts Legacy Cozy
         "primary": "#FFDB00",
         "secondary": "#372E29",
         "text": "#fff8e1",
         "button_bg": "linear-gradient(45deg, #372E29, #FFDB00)",
         "button_hover_bg": "linear-gradient(45deg, #FFDB00, #372E29)",
-        "house_logo": "https://i.imgur.com/vQT68mS.png",
-        "background_video": "https://i.imgur.com/Xqzc2OQ.mp4"
+        "house_logo": "YOUR_HUFFLEPUFF_LOGO_URL_HERE", # e.g., https://i.imgur.com/vQT68mS.png
+        "background_video": "YOUR_HUFFLEPUFF_VIDEO_URL_HERE" # e.g., https://i.imgur.com/Xqzc2OQ.mp4
     },
     "Ravenclaw": {
-        "wallpaper_url": "https://i.imgur.com/s6p0NKy.jpg",  # Ravenclaw Common Room - Hogwarts Legacy Starry
         "primary": "#0E1A40",
         "secondary": "#946B2D",
         "text": "#E2F1FF",
         "button_bg": "linear-gradient(45deg, #0E1A40, #946B2D)",
         "button_hover_bg": "linear-gradient(45deg, #946B2D, #0E1A40)",
-        "house_logo": "https://i.imgur.com/RoTJCGM.png",
-        "background_video": "https://i.imgur.com/C5UmTTK.mp4"
+        "house_logo": "YOUR_RAVENCLAW_LOGO_URL_HERE", # e.g., https://i.imgur.com/RoTJCGM.png
+        "background_video": "YOUR_RAVENCLAW_VIDEO_URL_HERE" # e.g., https://i.imgur.com/C5UmTTK.mp4
     }
 }
 
@@ -97,12 +93,15 @@ house_welcome_messages = {
 }
 
 # Display house crest in sidebar
-if selected_house != "None":
-    st.sidebar.image(theme["house_logo"], use_container_width=True, caption=f"The Crest of {selected_house}") # Changed here
-    st.sidebar.markdown(f"<h3 style='text-align:center; color:{theme['primary']}; text-shadow: 0 0 5px {theme['secondary']};'><i>{house_welcome_messages[selected_house]}</i></h3>", unsafe_allow_html=True)
+if theme.get("house_logo") and "YOUR_HOUSE_LOGO_URL_HERE" not in theme["house_logo"]:
+    if selected_house != "None":
+        st.sidebar.image(theme["house_logo"], use_container_width=True, caption=f"The Crest of {selected_house}")
+    else:
+        st.sidebar.image(theme["house_logo"], use_container_width=True, caption="Hogwarts School of Witchcraft and Wizardry")
 else:
-    st.sidebar.image(theme["house_logo"], use_container_width=True, caption="Hogwarts School of Witchcraft and Wizardry") # Changed here
-    st.sidebar.markdown(f"<h3 style='text-align:center; color:{theme['primary']}; text-shadow: 0 0 5px {theme['secondary']};'><i>{house_welcome_messages[selected_house]}</i></h3>", unsafe_allow_html=True)
+    st.sidebar.markdown(f"<p style='text-align:center;color:gray;'><i>{selected_house} logo placeholder</i></p>", unsafe_allow_html=True)
+
+st.sidebar.markdown(f"<h3 style='text-align:center; color:{theme['primary']}; text-shadow: 0 0 5px {theme['secondary']};'><i>{house_welcome_messages[selected_house]}</i></h3>", unsafe_allow_html=True)
 
 
 # Inject fonts & CSS with dynamic colors and magical animations
@@ -170,14 +169,14 @@ background_css = f"""
 
 
 @keyframes magicSparkle {{
-  0% {{ background-position: 0% 0%; opacity: 0.2; }}
-  50% {{ background-position: 100% 100%; opacity: 0.4; }}
-  100% {{ background-position: 0% 0%; opacity: 0.2; }}
+  0% {{ background-position: 0% 0%; opacity: 0.15; }} /* Base opacity for sparkles */
+  50% {{ background-position: 100% 100%; opacity: 0.3; }}
+  100% {{ background-position: 0% 0%; opacity: 0.15; }}
 }}
 
 /* Main app styling */
 .stApp {{
-    background-image: url('{theme["wallpaper_url"]}');
+    background-color: #05020f; /* Very dark fallback if video doesn't load */
     background-size: cover;
     background-attachment: fixed;
     color: {theme["text"]};
@@ -185,7 +184,24 @@ background_css = f"""
     margin: 0;
     padding: 0;
     overflow-x: hidden;
+    position: relative; /* For sparkle overlay */
 }}
+
+/* Sparkle overlay for the entire app background */
+.stApp::before {{
+    content: '';
+    position: fixed; /* Cover viewport */
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-image: url('https://i.imgur.com/WJIc0JL.gif'); /* General sparkle gif */
+    background-size: 200% 200%;
+    animation: magicSparkle 15s infinite linear;
+    pointer-events: none;
+    z-index: -1; /* Behind video and other content */
+}}
+
 
 #video-background {{
     position: fixed;
@@ -194,8 +210,8 @@ background_css = f"""
     width: 100vw;
     height: 100vh;
     object-fit: cover;
-    z-index: -2;
-    opacity: 0.5;
+    z-index: -2; /* Behind general sparkles, above solid color */
+    opacity: 0.6; /* Make video more prominent */
 }}
 
 .main .block-container {{
@@ -216,21 +232,7 @@ background_css = f"""
   margin-bottom: 2.5rem;
 }}
 
-.main .block-container:before {{
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: url('https://i.imgur.com/WJIc0JL.gif');
-  background-size: 250% 250%; 
-  opacity: 0.1; 
-  border-radius: 27px;
-  z-index: -1;
-  animation: magicSparkle 12s infinite linear;
-  pointer-events: none;
-}}
+/* Removed .main .block-container:before as .stApp::before handles global sparkle */
 
 h1, h2 {{
     font-family: 'Orbitron', 'Cinzel', sans-serif;
@@ -339,22 +341,20 @@ h3 {{
   box-shadow: 0 0 15px {theme["primary"]}, 0 0 10px {theme["secondary"]};
   background-color: rgba(15, 10, 35, 0.9);
 }}
-/* This Streamlit class targets the dropdown menu itself */
 .st-emotion-cache-10oheav {{ 
     background-color: rgba(5, 2, 15, 0.97) !important;
     border: 1px solid {theme["primary"]} !important;
     color: {theme["text"]} !important;
     font-family: 'Orbitron', 'Cinzel', serif !important;
 }}
-/* This Streamlit class targets items within the dropdown menu */
-.st-emotion-cache-trf2nb:hover {{
+.st-emotion-cache-trf2nb:hover {{ /* Class for selectbox options on hover */
     background-color: rgba({primary_rgb_css}, 0.35) !important;
     color: {theme["primary"]} !important;
 }}
 
 
 .css-1d391kg .sidebar .sidebar-content {{ 
-  background-image: url('{theme["wallpaper_url"]}');
+  background-color: #05020f; /* Fallback for sidebar if video doesn't load */
   background-size: cover;
   background-repeat: no-repeat;
   position: relative;
@@ -363,14 +363,15 @@ h3 {{
   box-shadow: 7px 0 20px rgba({primary_rgb_css}, 0.4);
 }}
 
-.css-1d391kg .sidebar .sidebar-content:before {{
+/* Sidebar sparkle overlay, distinct from main app if needed, or remove if global is enough */
+.css-1d391kg .sidebar .sidebar-content::before {{
   content: '';
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: url('https://i.imgur.com/aE3BnKy.gif'); 
+  background-image: url('https://i.imgur.com/aE3BnKy.gif'); /* Sidebar specific particles, can be same as global */
   opacity: 0.12;
   z-index: 0; 
   pointer-events: none;
@@ -681,7 +682,7 @@ hr:before {{
 .animated-text-delay-2 {{ animation-delay: 0.5s; }}
 .animated-text-delay-3 {{ animation-delay: 0.75s; }}
 
-.modal-content {{ /* Placeholder style */
+.modal-content {{ 
   background-color: rgba(5, 2, 15, 0.98);
   border: 2px solid {theme["primary"]};
   border-radius: 18px;
@@ -690,7 +691,7 @@ hr:before {{
   position: relative; 
 }}
 
-.close-button {{ /* Placeholder style */
+.close-button {{
   position: absolute;
   top: 18px;
   right: 18px;
@@ -868,7 +869,6 @@ hr:before {{
 .futuristic-text {{
     font-family: 'Orbitron', sans-serif;
     letter-spacing: 1px;
-    /* text-transform: uppercase; /* Re-enable if desired */
 }}
 
 </style>
@@ -877,7 +877,7 @@ hr:before {{
 st.markdown(background_css, unsafe_allow_html=True)
 
 # Add ambient background video based on selected house
-if selected_house != "":
+if theme.get("background_video") and "YOUR_DEFAULT_HOGWARTS_VIDEO_URL_HERE" not in theme["background_video"] and "YOUR_HOUSE_BACKGROUND_VIDEO_URL_HERE" not in theme["background_video"]:
     video_html = f'''
     <video autoplay muted loop id="video-background">
       <source src="{theme["background_video"]}" type="video/mp4">
@@ -885,6 +885,11 @@ if selected_house != "":
     </video>
     '''
     st.markdown(video_html, unsafe_allow_html=True)
+else:
+    # Optional: log that video URL is a placeholder or not provided
+    # print(f"Note: Background video for {selected_house} is a placeholder or not set.")
+    pass
+
 
 # Magical wand and wizarding icons
 WAND = "🪄"
@@ -904,24 +909,22 @@ ATOM = "⚛️"
 st.sidebar.markdown(f"### {SPELL_BOOK} Celestial Navigation")
 page_options = ["Hogwarts Holo-Welcome", "Data Transmutation Chamber",
                 "Predictive Enchantment Matrix", "Quantum Market Observatory"]
-page_session_key = "selected_page_financial_mystics_app" # Unique session state key
+page_session_key = "selected_page_financial_mystics_app_v2" # Unique session state key
 
 if page_session_key not in st.session_state:
     st.session_state[page_session_key] = page_options[0]
 
-# Use the session state for the radio button's default index
 current_page_selection = st.sidebar.radio(
     "Select Your Destination:",
     options=page_options,
     index=page_options.index(st.session_state[page_session_key]),
-    key="sidebar_page_selector", # Add a key to the radio button
+    key="sidebar_page_selector_v2",
     help="Navigate through the different chronomantic sections of the application."
 )
 
-# Update session state if selection changes
 if st.session_state[page_session_key] != current_page_selection:
     st.session_state[page_session_key] = current_page_selection
-    # No st.experimental_rerun() here, it will be handled by Streamlit's natural flow or button clicks
+    # st.experimental_rerun() # Rerun if page selection changes directly
 
 page = st.session_state[page_session_key]
 
@@ -931,7 +934,7 @@ if "df" not in st.session_state:
     st.session_state.df = None
 if "ticker_data" not in st.session_state:
     st.session_state.ticker_data = None
-if "spell_cast" not in st.session_state:
+if "spell_cast" not in st.session_state: # For welcome page fortune spell
     st.session_state.spell_cast = False
 if "user_name" not in st.session_state:
     st.session_state.user_name = ""
@@ -951,11 +954,13 @@ def magical_loading(message="Engaging Warp Drive..."):
     time.sleep(2.5)
     spinner_placeholder.empty()
 
-# Function to load data from file upload
+# --- (Rest of the Python functions: load_data_from_upload, load_data_from_stock, reset_data, page functions) ---
+# Ensure these functions also use placeholders for any direct image URLs if they exist.
+
 def load_data_from_upload():
     st.markdown(f"### {SPELL_BOOK} Upload Ancient Data Scrolls (CSV)")
     uploaded_file = st.file_uploader("Upload your financial dataset (CSV)", type=["csv"],
-                                     key="csv_uploader_exploration",
+                                     key="csv_uploader_exploration_page", # Unique key
                                      help="Provide a CSV file (digital scroll) containing your financial data.")
 
     if uploaded_file:
@@ -977,22 +982,21 @@ def load_data_from_upload():
             </div>
             """, unsafe_allow_html=True)
 
-# Function to load data from stock
 def load_data_from_stock():
     st.markdown(f"### {CRYSTAL_BALL} Summon Quantum Market Signatures (Stocks)")
     ticker_col, start_col, end_col = st.columns(3)
 
     with ticker_col:
-        ticker = st.text_input("Enter Quantum Signature (Stock Symbol, e.g., QNTM)", value="MSFT", key="ticker_input_stock_exploration",
+        ticker = st.text_input("Enter Quantum Signature (Stock Symbol, e.g., QNTM)", value="MSFT", key="ticker_input_stock_exploration_page", # Unique key
                               help="The quantum entanglement signature (stock symbol) of the entity for analysis.")
     with start_col:
-        start_date = st.date_input("Initial Chrono-Marker", pd.to_datetime("2023-01-01"), key="start_date_input_stock_exploration",
+        start_date = st.date_input("Initial Chrono-Marker", pd.to_datetime("2023-01-01"), key="start_date_input_stock_exploration_page", # Unique key
                                    help="The starting temporal marker for your quantum analysis.")
     with end_col:
-        end_date = st.date_input("Final Chrono-Marker", pd.to_datetime("today"), key="end_date_input_stock_exploration",
+        end_date = st.date_input("Final Chrono-Marker", pd.to_datetime("today"), key="end_date_input_stock_exploration_page", # Unique key
                                  help="The ending temporal marker for your quantum analysis.")
 
-    if st.button(f"{ATOM} Summon Market Signatures", key="summon_stock_data_exploration"):
+    if st.button(f"{ATOM} Summon Market Signatures", key="summon_stock_data_exploration_page"): # Unique key
         if not ticker:
             st.warning("Please enter a Quantum Signature to summon data.")
             return
@@ -1052,9 +1056,8 @@ def load_data_from_stock():
             </div>
             """, unsafe_allow_html=True)
 
-# Function to reset data
 def reset_data():
-    if st.button(f"{WAND} Evanesco (Purge Data Cache)", key="reset_data_button_exploration"):
+    if st.button(f"{WAND} Evanesco (Purge Data Cache)", key="reset_data_button_exploration_page"): # Unique key
         magical_loading("Purging temporal data streams...")
         st.session_state.df = None
         st.session_state.ticker_data = None
@@ -1062,7 +1065,6 @@ def reset_data():
         time.sleep(1)
         st.experimental_rerun()
 
-# Function for the welcome page
 def welcome_page():
     col_main, col_art = st.columns([2,1])
 
@@ -1081,7 +1083,7 @@ def welcome_page():
         st.markdown("<br>", unsafe_allow_html=True)
         cols_button_center = st.columns([0.5, 2, 0.5])
         with cols_button_center[1]:
-            if st.button(f"{ROCKET} Dive into the Financial Cosmos of Hogwarts! {ATOM}", key="dive_in_hogwarts_button", use_container_width=True):
+            if st.button(f"{ROCKET} Dive into the Financial Cosmos of Hogwarts! {ATOM}", key="dive_in_hogwarts_button_welcome_page", use_container_width=True): # Unique key
                 if not st.session_state.get("sorting_complete", False) and not st.session_state.get("user_name", ""):
                     st.toast("The Sorting Oracle must first calibrate your chrono-signature, young adept!", icon="🎩")
                 elif not st.session_state.get("sorting_complete", False):
@@ -1099,14 +1101,14 @@ def welcome_page():
             """, unsafe_allow_html=True)
 
             user_name_input = st.text_input("Enter your Chronomancer designation (wizarding name):",
-                                                        key="wizard_name_input_welcome",
+                                                        key="wizard_name_input_welcome_page_field", # Unique key
                                                         value=st.session_state.get("user_name", ""),
                                                         help="Your chosen callsign for this temporal-financial journey.")
-            if user_name_input: # Update session state immediately if there's input
+            if user_name_input: 
                 st.session_state.user_name = user_name_input
 
 
-            if st.session_state.user_name: # Proceed if name is available
+            if st.session_state.user_name: 
                 with st.expander(f"🌌 Sorting Oracle Calibration for {st.session_state.user_name}...", expanded=True):
                     st.markdown(f"""
                     <p style="font-style: italic; color: {theme['text']};" class="futuristic-text">"Analyzing quantum signature of: {st.session_state.user_name}. To determine your core financial frequency..."</p>
@@ -1120,11 +1122,11 @@ def welcome_page():
                             "Interface with ancient data archives to understand its optimal, knowledge-driven application (Ravenclaw Protocol)"
                         ],
                         index=None,
-                        key="sorting_hat_question_welcome",
+                        key="sorting_hat_question_welcome_page", # Unique key
                         placeholder="Select your prime directive...",
                         help="This calibrates the Oracle to your financial wavelength."
                     )
-                    if st.button("Activate Sorting Oracle!", key="activate_sorting_oracle_welcome"):
+                    if st.button("Activate Sorting Oracle!", key="activate_sorting_oracle_welcome_page"): # Unique key
                         if financial_question:
                             magical_loading("Oracle Calibrating Quantum Frequencies...")
                             if "Gryffindor" in financial_question: suggested_house = "Gryffindor"
@@ -1157,12 +1159,23 @@ def welcome_page():
 
     with col_art:
         st.markdown("<br><br><br>", unsafe_allow_html=True)
-        logo_to_display = theme["house_logo"] if selected_house != "None" else house_themes["None"]["house_logo"]
+        logo_to_display = theme.get("house_logo", "YOUR_DEFAULT_HOGWARTS_CREST_URL_HERE")
         caption_text = f"Holographic Projection: {selected_house} House Matrix" if selected_house != "None" else "Central Hogwarts Quantum Core"
+        
+        if "YOUR_HOUSE_LOGO_URL_HERE" not in logo_to_display and "YOUR_DEFAULT_HOGWARTS_CREST_URL_HERE" not in logo_to_display:
+            st.markdown(f"""
+            <div class="hologram animated-text animated-text-delay-2" style="text-align: center;">
+                <img src="{logo_to_display}" width="80%" class="floating-avatar" alt="{caption_text}"/>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown(f"""
+            <div class="hologram animated-text animated-text-delay-2" style="text-align: center; border: 1px dashed {theme['secondary']}; padding: 20px;">
+                <p style="color: {theme['text']};"><i>Logo Placeholder for {selected_house if selected_house != "None" else "Hogwarts"}</i></p>
+            </div>
+            """, unsafe_allow_html=True)
+        
         st.markdown(f"""
-        <div class="hologram animated-text animated-text-delay-2" style="text-align: center;">
-            <img src="{logo_to_display}" width="80%" class="floating-avatar" alt="{caption_text}"/>
-        </div>
         <p style="text-align: center; font-style: italic; margin-top: 10px; color:{theme['secondary']}; font-family:'Orbitron', 'MedievalSharp', cursive;" class="futuristic-text">
             {caption_text}
         </p>
@@ -1204,9 +1217,9 @@ def welcome_page():
             <h3 style="text-align:center;" class="futuristic-text">Interface with the Oracle Matrix {CRYSTAL_BALL}</h3>
         </div>
         """, unsafe_allow_html=True)
-        with st.form("fortune_spell_form_welcome_page"): # Unique key
+        with st.form("fortune_spell_form_welcome_page_form"): # Unique key
             fortune_input = st.text_input("Pose a binary query to the Oracle Matrix regarding your financial timeline:",
-                                          key="fortune_input_welcome",
+                                          key="fortune_input_welcome_page", # Unique key
                                           placeholder="Will my quantum investments achieve singularity this cycle?",
                                           help="The Oracle offers probabilistic glimpses, not deterministic futures!")
             cast_spell_button = st.form_submit_button(f"{ATOM} Query Oracle Matrix")
@@ -1268,23 +1281,26 @@ def welcome_page():
     """, unsafe_allow_html=True)
     cols_gallery = st.columns(3)
     artifacts = [
-        {"name": "The Temporal Ledger Engine", "img": "https://i.imgur.com/uQKGWJZ.gif", "desc": "A self-calibrating quantum ledger, revealing historical financial waves and projecting cyclical market resonances across timelines."},
-        {"name": "The Quantum Entanglement Abacus", "img": "https://i.imgur.com/xAQbA1N.gif", "desc": "A futuristic computational device that transmutes chaotic data streams into coherent financial insights using arcane quantum algorithms."},
-        {"name": "The Oracle Holo-Projector", "img": "https://i.imgur.com/N7PmfTI.gif", "desc": "A chrono-projection unit that materializes holographic simulations of potential market futures based on current quantum states and historical data matrices."}
+        {"name": "The Temporal Ledger Engine", "img_placeholder": "YOUR_ARTIFACT_GIF_URL_HERE_1", "desc": "A self-calibrating quantum ledger, revealing historical financial waves and projecting cyclical market resonances across timelines."},
+        {"name": "The Quantum Entanglement Abacus", "img_placeholder": "YOUR_ARTIFACT_GIF_URL_HERE_2", "desc": "A futuristic computational device that transmutes chaotic data streams into coherent financial insights using arcane quantum algorithms."},
+        {"name": "The Oracle Holo-Projector", "img_placeholder": "YOUR_ARTIFACT_GIF_URL_HERE_3", "desc": "A chrono-projection unit that materializes holographic simulations of potential market futures based on current quantum states and historical data matrices."}
     ]
     for i, artifact in enumerate(artifacts):
         with cols_gallery[i]:
+            img_html = f'<img src="{artifact["img_placeholder"]}" width="90%" style="border-radius: 10px; margin-bottom: 10px; border: 1px solid {theme["secondary"]}; box-shadow: 0 0 8px {theme["secondary"]};" alt="{artifact["name"]}" />'
+            if "YOUR_ARTIFACT_GIF_URL_HERE" in artifact["img_placeholder"]:
+                 img_html = f'<div style="width:90%; height:150px; border-radius: 10px; margin-bottom: 10px; border: 1px dashed {theme["secondary"]}; display:flex; align-items:center; justify-content:center; background-color:rgba(0,0,0,0.2);"><p style="color:{theme["text"]};"><i>Artifact Image Placeholder</i></p></div>'
+            
             st.markdown(f"""
             <div class="holodeck-container animated-text animated-text-delay-{i+1} futuristic-text" style="text-align: center; height: 380px; display: flex; flex-direction: column; justify-content: space-between;">
                 <div>
-                    <img src="{artifact['img']}" width="90%" style="border-radius: 10px; margin-bottom: 10px; border: 1px solid {theme['secondary']}; box-shadow: 0 0 8px {theme['secondary']};" alt="{artifact['name']}" />
+                    {img_html}
                     <h4 style="color:{theme['primary']};">{artifact['name']}</h4>
                     <p style="font-size:0.9em;">{artifact['desc']}</p>
                 </div>
             </div>
             """, unsafe_allow_html=True)
 
-# Function for data exploration page
 def data_exploration():
     st.markdown(f"""
     <div class="animated-text">
@@ -1350,13 +1366,13 @@ def data_exploration():
             viz_type = st.selectbox(
                 "Select Holo-Visualization Algorithm:",
                 ["Distribution Density Mapping (Histograms)", "Correlation Nebula Imaging (Heatmap)", "Categorical Harmonics (Bar Charts)"],
-                index=None, placeholder="Select a charting algorithm...", key="viz_type_selector_df",
+                index=None, placeholder="Select a charting algorithm...", key="viz_type_selector_df_page", # Unique key
                 help="Select an algorithm to visualize different quantum aspects of your data."
             )
             if viz_type == "Distribution Density Mapping (Histograms)":
                 selected_num_cols = st.multiselect("Select numerical data streams for density mapping:", numeric_cols, 
                                                    default=numeric_cols[:min(2, len(numeric_cols))] if numeric_cols else [],
-                                                   key="hist_multiselect_df",
+                                                   key="hist_multiselect_df_page", # Unique key
                                                    help="Choose one or more numerical fields to visualize their distribution density.")
                 if selected_num_cols:
                     for col_name in selected_num_cols:
@@ -1424,9 +1440,9 @@ def data_exploration():
                     st.info("The Correlation Nebula algorithm requires at least two numerical data streams to map their entanglements.")
             elif viz_type == "Categorical Harmonics (Bar Charts)":
                 if categorical_cols and numeric_cols:
-                    cat_col_select = st.selectbox("Select a categorical data stream for harmonic analysis:", categorical_cols, key="cat_col_select_df",
+                    cat_col_select = st.selectbox("Select a categorical data stream for harmonic analysis:", categorical_cols, key="cat_col_select_df_page", # Unique key
                                                   help="Choose a field with categories (text strings).")
-                    val_col_select = st.selectbox("Select a numerical data stream for value analysis:", numeric_cols, key="val_col_select_df",
+                    val_col_select = st.selectbox("Select a numerical data stream for value analysis:", numeric_cols, key="val_col_select_df_page", # Unique key
                                                   help="Choose a field with numerical values to compare across categories.")
                     if cat_col_select and val_col_select:
                         fig, ax = plt.subplots(figsize=(12, 7))
@@ -1541,15 +1557,15 @@ def data_exploration():
             )
             st.plotly_chart(fig_candle, use_container_width=True)
     elif not df and not ticker_data:
+        img_placeholder_html = f'<div style="width:150px; height:100px; border:1px dashed {theme["secondary"]}; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.1); margin:15px auto; border-radius:10px;"><p style="color:{theme["text"]}; text-align:center;"><i>Book GIF Placeholder</i></p></div>'
         st.markdown(f"""
         <div class="spell-note animated-text futuristic-text" style="text-align:center;">
             <p style="font-size: 1.2em;">{SPELL_BOOK} The Transmutation Chamber awaits your command, Chronomancer! {ATOM}</p>
             <p>Please initiate data influx using ancient CSV scrolls or by divining quantum market signatures above to begin your temporal analysis.</p>
-            <img src="https://i.imgur.com/gbsU7V1.gif" alt="Magical Book" style="width:150px; margin-top:15px; border-radius:10px; opacity:0.7;">
+            {img_placeholder_html}
         </div>
         """, unsafe_allow_html=True)
 
-# Placeholder for Machine Learning Spells page
 def machine_learning_spells():
     st.markdown(f"""
     <div class="animated-text">
@@ -1558,17 +1574,18 @@ def machine_learning_spells():
     </div>
     """, unsafe_allow_html=True)
     st.markdown("<hr class='animated-text'>", unsafe_allow_html=True)
+    
+    img_placeholder_html = f'<div style="width:200px; height:150px; border:1px dashed {theme["secondary"]}; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.1); margin:20px auto; border-radius:10px;"><p style="color:{theme["text"]}; text-align:center;"><i>Construction GIF Placeholder</i></p></div>'
     st.markdown(f"""
     <div class="spell-note animated-text futuristic-text" style="text-align:center;">
         <h3 style="color:{theme['primary']};">Matrix Under Quantum Calibration {BROOM}</h3>
         <p>Our Magi-Tech engineers are diligently calibrating these advanced predictive algorithms (Temporal Linear Projection, Logistic Quantum States, K-Means Singularity Clustering).</p>
         <p>Soon, you'll deploy enchantments to project market trajectories, classify chronomantic entities, and uncover hidden quantum clusters in your financial data streams.</p>
-        <img src="https://i.imgur.com/9jY2L4K.gif" alt="Magic construction" style="width: 200px; margin-top: 20px; border-radius:10px; opacity:0.8;">
+        {img_placeholder_html}
         <p style="font-style:italic; margin-top:15px;">Return when the quantum flux has stabilized!</p>
     </div>
     """, unsafe_allow_html=True)
 
-# Placeholder for Market Divination Observatory page
 def market_divination_observatory():
     st.markdown(f"""
     <div class="animated-text">
@@ -1577,12 +1594,14 @@ def market_divination_observatory():
     </div>
     """, unsafe_allow_html=True)
     st.markdown("<hr class='animated-text'>", unsafe_allow_html=True)
+    
+    img_placeholder_html = f'<div style="width:250px; height:180px; border:1px dashed {theme["secondary"]}; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.1); margin:20px auto; border-radius:10px;"><p style="color:{theme["text"]}; text-align:center;"><i>Observatory GIF Placeholder</i></p></div>'
     st.markdown(f"""
     <div class="spell-note animated-text futuristic-text" style="text-align:center;">
         <h3 style="color:{theme['primary']};">Chrono-Telescopes Undergoing Attunement {LIGHTNING}</h3>
         <p>Our chief Astro-Quantomancer is currently aligning the crystal lenses for optimal market scrying across multiple timelines.</p>
         <p>This observatory will soon offer live data influx, advanced holo-charting systems, and perhaps even a glimpse into the immediate quantum future of your chosen financial entities.</p>
-        <img src="https://i.imgur.com/lqzJCQW.gif" alt="Observatory" style="width: 250px; margin-top: 20px; border-radius:10px; opacity:0.8;">
+        {img_placeholder_html}
         <p style="font-style:italic; margin-top:15px;">Return when the cosmic resonances are optimal for chrono-projection!</p>
     </div>
     """, unsafe_allow_html=True)
