@@ -9,9 +9,9 @@ import matplotlib.pyplot as plt
 import plotly.graph_objs as go
 import yfinance as yf
 import seaborn as sns
-# import base64 # Not actively used, can be removed if not needed for other image processing
-# from PIL import Image # Not actively used, can be removed if not needed for other image processing
-# import io # Not actively used, can be removed if not needed for other image processing
+import base64 # Not actively used, can be removed if not needed for other image processing
+from PIL import Image # Not actively used, can be removed if not needed for other image processing
+import io # Not actively used, can be removed if not needed for other image processing
 import time
 import random
 
@@ -32,7 +32,7 @@ house_themes = {
         "text": "#eee7db", 
         "button_bg": "linear-gradient(45deg, #662d91, #fedd00)",
         "button_hover_bg": "linear-gradient(45deg, #fedd00, #662d91)",
-        "house_logo": "https://as1.ftcdn.net/v2/jpg/06/77/13/60/1000_F_677136057_O7VjvaSsdEpRjZrz79g2SzCZ2Hgzz55A.jpg", # e.g., https://i.imgur.com/Bt5Uyvw.png
+        "house_logo": "https://cdn.pixabay.com/photo/2015/10/06/22/04/harry-potter-975362_1280.jpg", # e.g., https://i.imgur.com/Bt5Uyvw.png
         "background_video": "YOUR_DEFAULT_HOGWARTS_VIDEO_URL_HERE" # e.g., https://i.imgur.com/xnTzwxu.mp4
     },
     "Gryffindor": {
