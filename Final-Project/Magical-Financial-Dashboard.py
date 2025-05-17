@@ -1,4 +1,115 @@
-import streamlit as st
+def welcome_page():
+    # Set welcome background
+    add_bg_from_url(wallpapers["welcome"])
+    inject_custom_css()
+    
+    # Create centered content with animation
+    st.markdown(
+        f"""
+        <div style="text-align:center; padding:40px; animation: fadeIn 2s;">
+            <h1 style="font-size:52px; margin-bottom:10px;">{WAND} Arcane Financial Wizardry {WAND}</h1>
+            <p style="font-size:24px; margin-bottom:40px; color:{theme["secondary"]}; text-shadow: 0 0 10px {theme["secondary"]};">
+                Where Ancient Magic Meets Modern Finance
+            </p>
+            
+            <div class="magic-portal"></div>
+            
+            <p style="font-size:20px; max-width:700px; margin:40px auto; line-height:1.6;">
+                Welcome, esteemed wizard. Enter our mystical chamber of financial secrets,
+                where you'll discover the arcane arts of data divination and market prophecy.
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+    
+    # Create a proceed button with magical effect
+    if st.button("Enter the Chamber of Wizardry", key="enter_button"):
+        st.session_state.page = "task_select"
+        st.experimental_rerun()
+
+def task_selection_page():
+    # Set task select background
+    add_bg_from_url(wallpapers["task_select"])
+    inject_custom_css()
+    
+    st.markdown(
+        f"""
+        <div style="text-align:center; padding:30px 0;">
+            <h1>{BOOK} Chamber of Tasks {BOOK}</h1>
+            <p style="font-size:20px; margin-bottom:30px; color:{theme["secondary"]};">
+                Select a magical task to perform
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+    
+    # Create a grid layout for task selection
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        data_task = st.container()
+        with data_task:
+            st.markdown(
+                f"""
+                <div class="task-container" id="data-task">
+                    <h2 style="text-align:center;">{CRYSTAL} Mystic Data Divination {CRYSTAL}</h2>
+                    <p style="text-align:center; font-size:18px;">
+                        Upload your scrolls or summon market data from the magical realm
+                    </p>
+                    <div style="text-align:center; margin-top:20px;">
+                        <img src="https://media4.giphy.com/media/l0ExhNyOZBIAtSXF6/giphy.gif" width="200" 
+                             style="border-radius:10px; margin-bottom:20px;">
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+            if st.button("Begin Divination", key="data_button"):
+                st.session_state.selected_task = "data_explorer"
+                st.experimental_rerun()
+        
+        market_task = st.container()
+        with market_task:
+            st.markdown(
+                f"""
+                <div class="task-container" id="market-task">
+                    <h2 style="text-align:center;">{STAR} Market Scrying {STAR}</h2>
+                    <p style="text-align:center; font-size:18px;">
+                        Gaze into the crystal ball of market movements and financial futures
+                    </p>
+                    <div style="text-align:center; margin-top:20px;">
+                        <img src="https://media2.giphy.com/media/3oKIPyk5nFbRIQSf0A/giphy.gif" width="200" 
+                             style="border-radius:10px; margin-bottom:20px;">
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+            if st.button("Begin Scrying", key="market_button"):
+                st.session_state.selected_task = "market_scrying"
+                st.experimental_rerun()
+    
+    with col2:
+        prediction_task = st.container()
+        with prediction_task:
+            st.markdown(
+                f"""
+                <div class="task-container" id="prediction-task">
+                    <h2 style="text-align:center;">{SPELL} Prophecy Enchantments {SPELL}</h2>
+                    <p style="text-align:center; font-size:18px;">
+                        Cast powerful prediction spells using ancient machine learning incantations
+                    </p>
+                    <div style="text-align:center; margin-top:20px;">
+                        <img src="https://media2.giphy.com/media/3o84U6421OOWegpQhq/giphy.gif" width="200" 
+                             style="border-radius:10px; margin-bottom:20px;">
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+            if st.import streamlit as st
 import pandas as pd
 import numpy as np
 from sklearn.linear_model import LinearRegression, LogisticRegression
@@ -8,51 +119,62 @@ from sklearn.metrics import mean_squared_error, accuracy_score
 import plotly.graph_objs as go
 import yfinance as yf
 import seaborn as sns
+import base64
 
 # Set page config
 st.set_page_config(
-    page_title="Futuristic Wizarding Finance",
+    page_title="Arcane Financial Wizardry",
     page_icon="✨",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# Futuristic wallpapers for houses with holographic/magical tech themes
+# Specific wallpapers for welcome and houses with magical tech themes
+wallpapers = {
+    "welcome": "https://cdn.wallpapersafari.com/34/82/YbZ1me.jpg",  # Magical library with glowing books
+    "task_select": "https://rare-gallery.com/uploads/posts/340161-Wizard-Magic-Book-Wallpaper.jpg"  # Magical spellbook backdrop
+}
+
 house_themes = {
     "None": {
-        "background": "https://wallpaperaccess.com/full/2825704.gif",  # Cosmic magical starfield with shimmering particles
+        "background": "https://i.imgur.com/IEDYGYr.gif",  # Mystical cosmic portal
         "primary": "#00ffaa",
         "secondary": "#9d4edd",
         "text": "#ffffff",
-        "accent": "#00e6e6"
+        "accent": "#00e6e6",
+        "wallpaper": "https://i.pinimg.com/originals/e0/d0/7a/e0d07a69c7341bedf011bfcbf99c1c31.jpg"  # Magical observatory
     },
     "Gryffindor": {
-        "background": "https://wallpaperaccess.com/full/1124640.jpg",  # Red-gold futuristic city with magical elements
+        "background": "https://i.imgur.com/wr0m4TE.gif",  # Mystical fire
         "primary": "#ff3c00",
         "secondary": "#ffd700",
         "text": "#ffffff",
-        "accent": "#ff9e00"
+        "accent": "#ff9e00",
+        "wallpaper": "https://images.alphacoders.com/132/1329002.png"  # Gryffindor-themed magical tech chamber
     },
     "Slytherin": {
-        "background": "https://wallpaperaccess.com/full/1329742.jpg",  # Green cyber-magical environment
+        "background": "https://i.imgur.com/4LFzKXp.gif",  # Green magical potion
         "primary": "#00ff66",
         "secondary": "#c0c0c0",
         "text": "#ffffff",
-        "accent": "#008060"
+        "accent": "#008060",
+        "wallpaper": "https://wallpaperaccess.com/full/3932263.jpg"  # Slytherin-themed magical dungeon
     },
     "Ravenclaw": {
-        "background": "https://wallpaperaccess.com/full/3237686.jpg",  # Blue tech-magical starry night
+        "background": "https://i.imgur.com/qQOsSDo.gif",  # Blue magical stars
         "primary": "#0099ff",
         "secondary": "#c39c6b", 
         "text": "#ffffff",
-        "accent": "#47b5ff"
+        "accent": "#47b5ff",
+        "wallpaper": "https://wallpapercave.com/wp/wp2754846.jpg"  # Ravenclaw-themed magical observatory
     },
     "Hufflepuff": {
-        "background": "https://wallpaperaccess.com/full/2558051.jpg",  # Yellow cyber-magical environment
+        "background": "https://i.imgur.com/bGa1T9s.gif",  # Yellow magical energy
         "primary": "#f9c80e",
         "secondary": "#202020",
         "text": "#ffffff",
-        "accent": "#e8a200"
+        "accent": "#e8a200",
+        "wallpaper": "https://cdn.wallpapersafari.com/60/85/X01SJg.jpg"  # Hufflepuff-themed magical garden
     }
 }
 
